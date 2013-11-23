@@ -1,6 +1,6 @@
 pre code{color:#f8f8f8}
 pre{// background:#000}
-pre .shebang,pre .comment,pre .template_comment,pre .javadoc,pre .diff .header,pre .pragma,pre .haskell .preprocessor{color:#7c7c7c}
+pre .shebang,pre .comment,pre .template_comment,pre .javadoc,pre .diff .header,pre .pragma{color:#7c7c7c}
 pre .keyword,pre .tag,pre .ruby .function .keyword{color:#96cbfe}
 pre .function .keyword,pre .sub .keyword,pre .method,pre .list .title,pre .addition{color:#ffffb6}
 pre .title,pre .localvars,pre .chunk,pre .decorator,pre .built_in,pre .identifier,pre .vhdl .literal,pre .id{color:#268bd2}
