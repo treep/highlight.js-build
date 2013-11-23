@@ -6,6 +6,104 @@
 </head>
 <body>
 
+<p>D</p>
+
+<div class="code"><pre class="language-d"><code>
+import std.stdio, std.concurrency;
+ 
+void foo()
+{
+    bool cont = true;
+ 
+    while (cont)
+    {
+        receive( // delegates are used to match the message type
+            (int msg) => writeln("int received: ", msg),
+            (Tid sender) { cont = false; sender.send(-1); },
+            (Variant v) => writeln("huh?") // Variant matches any type
+        );
+    }
+}
+ 
+void main()
+{
+    auto tid = spawn(&foo); // spawn a new thread running foo()
+ 
+    foreach (i; 0 .. 10)
+        tid.send(i);   // send some integers
+    tid.send(1.0f);    // send a float
+    tid.send("hello"); // send a string
+    tid.send(thisTid); // send a struct (Tid)
+ 
+    receive((int x) => writeln("Main thread received message: ", x));
+}
+</code></pre></div></div>
+
+<p>Rust</p>
+
+<div class="code"><pre class="language-rust"><code>
+fn map<T, U>(vector: &[T], function: &fn(v: &T) -> U) -> ~[U] {
+    let mut accumulator = ~[];
+    for element in vector.iter() {
+        accumulator.push(function(element));
+    }
+    return accumulator;
+}
+</code></pre></div></div>
+
+<p>F#</p>
+
+<div class="code"><pre class="language-fs"><code>
+// A very naive prime number detector
+let isPrime (n:int) =
+   let bound = int (sqrt (float n))
+   seq {2 .. bound} |> Seq.forall (fun x -> n % x <> 0)
+ 
+// We are using async workflows
+let primeAsync n =
+    async { return (n, isPrime n) }
+ 
+// Return primes between m and n using multiple threads
+let primes m n =
+    seq {m .. n}
+        |> Seq.map primeAsync
+        |> Async.Parallel
+        |> Async.RunSynchronously
+        |> Array.filter snd
+        |> Array.map fst
+ 
+// Run a test
+primes 1000000 1002000
+    |> Array.iter (printfn "%d")
+</code></pre></div></div>
+
+<p>Clojure</p>
+
+<div class="code"><pre class="language-clojure"><code>
+(defn run [nvecs nitems nthreads niters]
+  (let [vec-refs (vec (map (comp ref vec)
+                           (partition nitems (range (* nvecs nitems)))))
+        swap #(let [v1 (rand-int nvecs)
+                    v2 (rand-int nvecs)
+                    i1 (rand-int nitems)
+                    i2 (rand-int nitems)]
+                (dosync
+                 (let [temp (nth @(vec-refs v1) i1)]
+                   (alter (vec-refs v1) assoc i1 (nth @(vec-refs v2) i2))
+                   (alter (vec-refs v2) assoc i2 temp))))
+        report #(do
+                 (prn (map deref vec-refs))
+                 (println "Distinct:"
+                          (count (distinct (apply concat (map deref vec-refs))))))]
+    (report)
+    (dorun (apply pcalls (repeat nthreads #(dotimes [_ niters] (swap)))))
+    (report)))
+ 
+(run 100 10 10 100000)
+</code></pre></div></div>
+
+<p>Haskell</p>
+
 <div class="code"><pre class="language-haskell"><code>
 data Foo = Foo {-# UNPACK #-} !Atype 
                {-# UNPACK #-} !BType 
