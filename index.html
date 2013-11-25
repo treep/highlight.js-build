@@ -6,117 +6,6 @@
 </head>
 <body>
 
-<p>D</p>
-
-<div class="code"><pre class="language-d"><code>
-import std.stdio, std.concurrency;
- 
-void foo()
-{
-    bool cont = true;
- 
-    while (cont)
-    {
-        receive( // delegates are used to match the message type
-            (int msg) => writeln("int received: ", msg),
-            (Tid sender) { cont = false; sender.send(-1); },
-            (Variant v) => writeln("huh?") // Variant matches any type
-        );
-    }
-}
- 
-void main()
-{
-    auto tid = spawn(&foo); // spawn a new thread running foo()
- 
-    foreach (i; 0 .. 10)
-        tid.send(i);   // send some integers
-    tid.send(1.0f);    // send a float
-    tid.send("hello"); // send a string
-    tid.send(thisTid); // send a struct (Tid)
- 
-    receive((int x) => writeln("Main thread received message: ", x));
-}
-</code></pre></div></div>
-
-<p>Rust</p>
-
-<div class="code"><pre class="language-rust"><code>
-fn map<T, U>(vector: &[T], function: &fn(v: &T) -> U) -> ~[U] {
-    let mut accumulator = ~[];
-    for element in vector.iter() {
-        accumulator.push(function(element));
-    }
-    return accumulator;
-}
-</code></pre></div></div>
-
-<p>F#</p>
-
-<div class="code"><pre class="language-fs"><code>
-// A very naive prime number detector
-let isPrime (n:int) =
-   let bound = int (sqrt (float n))
-   seq {2 .. bound} |> Seq.forall (fun x -> n % x <> 0)
- 
-// We are using async workflows
-let primeAsync n =
-    async { return (n, isPrime n) }
- 
-// Return primes between m and n using multiple threads
-let primes m n =
-    seq {m .. n}
-        |> Seq.map primeAsync
-        |> Async.Parallel
-        |> Async.RunSynchronously
-        |> Array.filter snd
-        |> Array.map fst
- 
-// Run a test
-primes 1000000 1002000
-    |> Array.iter (printfn "%d")
-</code></pre></div></div>
-
-<p>Clojure</p>
-
-<div class="code"><pre class="language-clojure"><code>
-(defn run [nvecs nitems nthreads niters]
-  (let [vec-refs (vec (map (comp ref vec)
-                           (partition nitems (range (* nvecs nitems)))))
-        swap #(let [v1 (rand-int nvecs)
-                    v2 (rand-int nvecs)
-                    i1 (rand-int nitems)
-                    i2 (rand-int nitems)]
-                (dosync
-                 (let [temp (nth @(vec-refs v1) i1)]
-                   (alter (vec-refs v1) assoc i1 (nth @(vec-refs v2) i2))
-                   (alter (vec-refs v2) assoc i2 temp))))
-        report #(do
-                 (prn (map deref vec-refs))
-                 (println "Distinct:"
-                          (count (distinct (apply concat (map deref vec-refs))))))]
-    (report)
-    (dorun (apply pcalls (repeat nthreads #(dotimes [_ niters] (swap)))))
-    (report)))
- 
-(run 100 10 10 100000)
-</code></pre></div></div>
-
-<p>Haskell</p>
-
-<div class="code"><pre class="language-haskell"><code>
-data Foo = Foo {-# UNPACK #-} !Atype 
-               {-# UNPACK #-} !BType 
-               {-# UNPACK #-} !CType
-</code></pre></div></div>
-
-<div class="code"><pre class="language-haskell"><code>
-instance Storable Foo where ... -- описываем как стуктура лежит в памяти
-
-import Data.Vector.Storable as V -- для неизменяемых
-import Data.Vector.Storable.Mutable as MV -- для изменяемых
-</code></pre></div></div>
-
 <div class="code"><pre class="language-haskell"><code>
 #!/usr/bin/env runhaskell
 #if __GLASGOW_HASKELL__
@@ -124,15 +13,31 @@ import Data.Vector.Storable.Mutable as MV -- для изменяемых
 #endif
 -- | ...
 module A.B.C (a, {- ... -} B(..), c, -- ...
+              --(),
+              --(,),
+              --[],
+              --(->),
               d, -- ...
               e) {- ... -} where -- ...
 {- ... -}
 import qualified A.B.C as A.B hiding (a, {- ... -} B(..), c) --
+
+import Data.Vector.Storable as V -- ...
+import Data.Vector.Storable.Mutable as MV -- ...
+
+instance Storable Foo where -- ...
+-- instance Storable Foo -- ...
+
 data family A = A { {- ... -} _a :: {-# UNPACK #-} !Int -- ...
 #if __Q__
                   , _a :: C -- ...
 #endif
                   } deriving (Foo) -- ...
+
+data Foo = Foo {-# UNPACK #-} !Atype 
+               {-# UNPACK #-} !BType 
+               {-# UNPACK #-} !CType
+
 newtype A = A (B ()) {- ... -}
   deriving (Foo) {-
 type A a b = B (C a b) -}
@@ -156,6 +61,1395 @@ a = not >> mdo print 1 >> rec 1 '2' '\'' '\n' ':':' ':msg >> proc 1 2 3 >> " -- 
 default Num {- ... -} ( Int ) -- ...
 infix {- ... -} + 1 -- ...
 foreign import ccall {- ... -} "a" a :: A (B ()) -- ...
+</code></pre></div></div>
+
+<div class="code"><pre class="language-haskell"><code>
+module Prelude (
+    module PreludeList, module PreludeText, module PreludeIO,
+    Bool(False, True),
+    Maybe(Nothing, Just),
+    Either(Left, Right),
+    Ordering(LT, EQ, GT),
+    Char, String, Int, Integer, Float, Double, Rational, IO,
+
+--      These built-in types are defined in the Prelude, but
+--      are denoted by built-in syntax, and cannot legally
+--      appear in an export list.
+--  List type: []((:), [])
+--  Tuple types: (,)((,)), (,,)((,,)), etc.
+--  Trivial type: ()(())
+--  Functions: (->)
+
+    Eq((==), (/=)),
+    Ord(compare, (<), (<=), (>=), (>), max, min),
+    Enum(succ, pred, toEnum, fromEnum, enumFrom, enumFromThen,
+         enumFromTo, enumFromThenTo),
+    Bounded(minBound, maxBound),
+    Num((+), (-), (*), negate, abs, signum, fromInteger),
+    Real(toRational),
+    Integral(quot, rem, div, mod, quotRem, divMod, toInteger),
+    Fractional((/), recip, fromRational),
+    Floating(pi, exp, log, sqrt, (**), logBase, sin, cos, tan,
+             asin, acos, atan, sinh, cosh, tanh, asinh, acosh, atanh),
+    RealFrac(properFraction, truncate, round, ceiling, floor),
+    RealFloat(floatRadix, floatDigits, floatRange, decodeFloat,
+              encodeFloat, exponent, significand, scaleFloat, isNaN,
+              isInfinite, isDenormalized, isIEEE, isNegativeZero, atan2),
+    Monad((>>=), (>>), return, fail),
+    Functor(fmap),
+    mapM, mapM_, sequence, sequence_, (=<<), 
+    maybe, either,
+    (&&), (||), not, otherwise,
+    subtract, even, odd, gcd, lcm, (^), (^^), 
+    fromIntegral, realToFrac, 
+    fst, snd, curry, uncurry, id, const, (.), flip, ($), until,
+    asTypeOf, error, undefined,
+    seq, ($!)
+  ) where
+
+import PreludeBuiltin                      -- Contains all `prim' values
+import UnicodePrims( primUnicodeMaxChar )  -- Unicode primitives
+import PreludeList
+import PreludeText
+import PreludeIO
+import Ratio( Rational )
+
+infixr 9  .
+infixr 8  ^, ^^, **
+infixl 7  *, /, `quot`, `rem`, `div`, `mod`
+infixl 6  +, -
+
+-- The (:) operator is built-in syntax, and cannot legally be given
+-- a fixity declaration; but its fixity is given by:
+--   infixr 5  :
+
+infix  4  ==, /=, <, <=, >=, >
+infixr 3  &&
+infixr 2  ||
+infixl 1  >>, >>=
+infixr 1  =<<
+infixr 0  $, $!, `seq`
+
+-- Standard types, classes, instances and related functions
+
+-- Equality and Ordered classes
+
+
+class  Eq a  where
+    (==), (/=) :: a -> a -> Bool
+
+        -- Minimal complete definition:
+        --      (==) or (/=)
+    x /= y     =  not (x == y)
+    x == y     =  not (x /= y)
+
+
+class  (Eq a) => Ord a  where
+    compare              :: a -> a -> Ordering
+    (<), (<=), (>=), (>) :: a -> a -> Bool
+    max, min             :: a -> a -> a
+
+        -- Minimal complete definition:
+        --      (<=) or compare
+        -- Using compare can be more efficient for complex types.
+    compare x y
+         | x == y    =  EQ
+         | x <= y    =  LT
+         | otherwise =  GT
+
+    x <= y           =  compare x y /= GT
+    x <  y           =  compare x y == LT
+    x >= y           =  compare x y /= LT
+    x >  y           =  compare x y == GT
+
+-- note that (min x y, max x y) = (x,y) or (y,x)
+    max x y 
+         | x <= y    =  y
+         | otherwise =  x
+    min x y
+         | x <= y    =  x
+         | otherwise =  y
+
+-- Enumeration and Bounded classes
+
+
+class  Enum a  where
+    succ, pred       :: a -> a
+    toEnum           :: Int -> a
+    fromEnum         :: a -> Int
+    enumFrom         :: a -> [a]             -- [n..]
+    enumFromThen     :: a -> a -> [a]        -- [n,n'..]
+    enumFromTo       :: a -> a -> [a]        -- [n..m]
+    enumFromThenTo   :: a -> a -> a -> [a]   -- [n,n'..m]
+
+        -- Minimal complete definition:
+        --      toEnum, fromEnum
+--
+-- NOTE: these default methods only make sense for types
+-- 	 that map injectively into Int using fromEnum
+--	 and toEnum.
+    succ             =  toEnum . (+1) . fromEnum
+    pred             =  toEnum . (subtract 1) . fromEnum
+    enumFrom x       =  map toEnum [fromEnum x ..]
+    enumFromTo x y   =  map toEnum [fromEnum x .. fromEnum y]
+    enumFromThen x y =  map toEnum [fromEnum x, fromEnum y ..]
+    enumFromThenTo x y z = 
+                        map toEnum [fromEnum x, fromEnum y .. fromEnum z]
+
+
+class  Bounded a  where
+    minBound         :: a
+    maxBound         :: a
+
+-- Numeric classes
+
+
+class  (Eq a, Show a) => Num a  where
+    (+), (-), (*)    :: a -> a -> a
+    negate           :: a -> a
+    abs, signum      :: a -> a
+    fromInteger      :: Integer -> a
+
+        -- Minimal complete definition:
+        --      All, except negate or (-)
+    x - y            =  x + negate y
+    negate x         =  0 - x
+
+
+class  (Num a, Ord a) => Real a  where
+    toRational       ::  a -> Rational
+
+
+class  (Real a, Enum a) => Integral a  where
+    quot, rem        :: a -> a -> a   
+    div, mod         :: a -> a -> a
+    quotRem, divMod  :: a -> a -> (a,a)
+    toInteger        :: a -> Integer
+
+        -- Minimal complete definition:
+        --      quotRem, toInteger
+    n `quot` d       =  q  where (q,r) = quotRem n d
+    n `rem` d        =  r  where (q,r) = quotRem n d
+    n `div` d        =  q  where (q,r) = divMod n d
+    n `mod` d        =  r  where (q,r) = divMod n d
+    divMod n d       =  if signum r == - signum d then (q-1, r+d) else qr
+                        where qr@(q,r) = quotRem n d
+
+
+class  (Num a) => Fractional a  where
+    (/)              :: a -> a -> a
+    recip            :: a -> a
+    fromRational     :: Rational -> a
+
+        -- Minimal complete definition:
+        --      fromRational and (recip or (/))
+    recip x          =  1 / x
+    x / y            =  x * recip y
+
+
+class  (Fractional a) => Floating a  where
+    pi                  :: a
+    exp, log, sqrt      :: a -> a
+    (**), logBase       :: a -> a -> a
+    sin, cos, tan       :: a -> a
+    asin, acos, atan    :: a -> a
+    sinh, cosh, tanh    :: a -> a
+    asinh, acosh, atanh :: a -> a
+
+        -- Minimal complete definition:
+        --      pi, exp, log, sin, cos, sinh, cosh
+        --      asin, acos, atan
+        --      asinh, acosh, atanh
+    x ** y           =  exp (log x * y)
+    logBase x y      =  log y / log x
+    sqrt x           =  x ** 0.5
+    tan  x           =  sin  x / cos  x
+    tanh x           =  sinh x / cosh x
+
+
+
+class  (Real a, Fractional a) => RealFrac a  where
+    properFraction   :: (Integral b) => a -> (b,a)
+    truncate, round  :: (Integral b) => a -> b
+    ceiling, floor   :: (Integral b) => a -> b
+
+        -- Minimal complete definition:
+        --      properFraction
+    truncate x       =  m  where (m,_) = properFraction x
+    
+    round x          =  let (n,r) = properFraction x
+                            m     = if r < 0 then n - 1 else n + 1
+                          in case signum (abs r - 0.5) of
+                                -1 -> n
+                                0  -> if even n then n else m
+                                1  -> m
+    
+    ceiling x        =  if r > 0 then n + 1 else n
+                        where (n,r) = properFraction x
+    
+    floor x          =  if r < 0 then n - 1 else n
+                        where (n,r) = properFraction x
+
+
+class  (RealFrac a, Floating a) => RealFloat a  where
+    floatRadix       :: a -> Integer
+    floatDigits      :: a -> Int
+    floatRange       :: a -> (Int,Int)
+    decodeFloat      :: a -> (Integer,Int)
+    encodeFloat      :: Integer -> Int -> a
+    exponent         :: a -> Int
+    significand      :: a -> a
+    scaleFloat       :: Int -> a -> a
+    isNaN, isInfinite, isDenormalized, isNegativeZero, isIEEE
+                     :: a -> Bool
+    atan2            :: a -> a -> a
+
+        -- Minimal complete definition:
+        --      All except exponent, significand, 
+        --                 scaleFloat, atan2
+    exponent x       =  if m == 0 then 0 else n + floatDigits x
+                        where (m,n) = decodeFloat x
+
+    significand x    =  encodeFloat m (- floatDigits x)
+                        where (m,_) = decodeFloat x
+
+    scaleFloat k x   =  encodeFloat m (n+k)
+                        where (m,n) = decodeFloat x
+
+    atan2 y x
+      | x>0           =  atan (y/x)
+      | x==0 && y>0   =  pi/2
+      | x<0  && y>0   =  pi + atan (y/x) 
+      |(x<=0 && y<0)  ||
+       (x<0 && isNegativeZero y) ||
+       (isNegativeZero x && isNegativeZero y)
+                      = -atan2 (-y) x
+      | y==0 && (x<0 || isNegativeZero x)
+                      =  pi    -- must be after the previous test on zero y
+      | x==0 && y==0  =  y     -- must be after the other double zero tests
+      | otherwise     =  x + y -- x or y is a NaN, return a NaN (via +)
+
+-- Numeric functions
+
+
+subtract         :: (Num a) => a -> a -> a
+subtract         =  flip (-)
+
+
+even, odd        :: (Integral a) => a -> Bool
+even n           =  n `rem` 2 == 0
+odd              =  not . even
+
+
+gcd              :: (Integral a) => a -> a -> a
+gcd 0 0          =  error "Prelude.gcd: gcd 0 0 is undefined"
+gcd x y          =  gcd' (abs x) (abs y)
+                    where gcd' x 0  =  x
+                          gcd' x y  =  gcd' y (x `rem` y)
+
+
+lcm              :: (Integral a) => a -> a -> a
+lcm _ 0          =  0
+lcm 0 _          =  0
+lcm x y          =  abs ((x `quot` (gcd x y)) * y)
+
+
+(^)              :: (Num a, Integral b) => a -> b -> a
+x ^ 0            =  1
+x ^ n | n > 0    =  f x (n-1) x
+                    where f _ 0 y = y
+                          f x n y = g x n  where
+                                    g x n | even n  = g (x*x) (n `quot` 2)
+                                          | otherwise = f x (n-1) (x*y)
+_ ^ _            = error "Prelude.^: negative exponent"
+
+
+(^^)             :: (Fractional a, Integral b) => a -> b -> a
+x ^^ n           =  if n >= 0 then x^n else recip (x^(-n))
+
+
+fromIntegral     :: (Integral a, Num b) => a -> b
+fromIntegral     =  fromInteger . toInteger
+
+
+realToFrac     :: (Real a, Fractional b) => a -> b
+realToFrac      =  fromRational . toRational
+
+-- Monadic classes
+
+
+class  Functor f  where
+    fmap              :: (a -> b) -> f a -> f b
+
+
+class  Monad m  where
+    (>>=)  :: m a -> (a -> m b) -> m b
+    (>>)   :: m a -> m b -> m b
+    return :: a -> m a
+    fail   :: String -> m a
+
+        -- Minimal complete definition:
+        --      (>>=), return
+    m >> k  =  m >>= \_ -> k
+    fail s  = error s
+
+
+sequence       :: Monad m => [m a] -> m [a] 
+sequence       =  foldr mcons (return [])
+                    where mcons p q = p >>= \x -> q >>= \y -> return (x:y)
+
+
+sequence_      :: Monad m => [m a] -> m () 
+sequence_      =  foldr (>>) (return ())
+
+-- The xxxM functions take list arguments, but lift the function or
+-- list element to a monad type
+
+mapM             :: Monad m => (a -> m b) -> [a] -> m [b]
+mapM f as        =  sequence (map f as)
+
+
+mapM_            :: Monad m => (a -> m b) -> [a] -> m ()
+mapM_ f as       =  sequence_ (map f as)
+
+
+(=<<)            :: Monad m => (a -> m b) -> m a -> m b
+f =<< x          =  x >>= f
+
+
+-- Trivial type
+
+
+data  ()  =  ()  deriving (Eq, Ord, Enum, Bounded)
+-- Not legal Haskell; for illustration only
+
+-- Function type
+
+-- identity function
+
+id               :: a -> a
+id x             =  x
+
+-- constant function
+
+const            :: a -> b -> a
+const x _        =  x
+
+-- function composition
+
+(.)              :: (b -> c) -> (a -> b) -> a -> c
+f . g            =  \ x -> f (g x)
+
+-- flip f  takes its (first) two arguments in the reverse order of f.
+
+flip             :: (a -> b -> c) -> b -> a -> c
+flip f x y       =  f y x
+
+
+seq :: a -> b -> b
+seq = ...       -- Primitive
+
+-- right-associating infix application operators 
+-- (useful in continuation-passing style)
+
+($), ($!) :: (a -> b) -> a -> b
+f $  x    =  f x
+f $! x    =  x `seq` f x
+
+
+-- Boolean type
+
+
+data  Bool  =  False | True     deriving (Eq, Ord, Enum, Read, Show, Bounded)
+
+-- Boolean functions
+
+
+(&&), (||)       :: Bool -> Bool -> Bool
+True  && x       =  x
+False && _       =  False
+True  || _       =  True
+False || x       =  x
+                                        
+
+not              :: Bool -> Bool
+not True         =  False
+not False        =  True
+
+
+otherwise        :: Bool
+otherwise        =  True
+
+
+-- Character type
+
+
+data Char = ... 'a' | 'b' ... -- Unicode values
+
+
+instance  Eq Char  where
+    c == c'          =  fromEnum c == fromEnum c'
+
+
+instance  Ord Char  where
+    c <= c'          =  fromEnum c <= fromEnum c'
+
+
+instance  Enum Char  where
+    toEnum            = primIntToChar
+    fromEnum          = primCharToInt
+    enumFrom c        = map toEnum [fromEnum c .. fromEnum (maxBound::Char)]
+    enumFromThen c c' = map toEnum [fromEnum c, fromEnum c' .. fromEnum lastChar]
+                      where lastChar :: Char
+                            lastChar | c' < c    = minBound
+                                     | otherwise = maxBound
+
+
+instance  Bounded Char  where
+    minBound  =  '\0'
+    maxBound  =  primUnicodeMaxChar
+
+
+type  String = [Char]
+
+
+-- Maybe type
+
+
+data  Maybe a  =  Nothing | Just a      deriving (Eq, Ord, Read, Show)
+
+
+maybe              :: b -> (a -> b) -> Maybe a -> b
+maybe n f Nothing  =  n
+maybe n f (Just x) =  f x
+
+
+instance  Functor Maybe  where
+    fmap f Nothing    =  Nothing
+    fmap f (Just x)   =  Just (f x)
+        
+
+instance  Monad Maybe  where
+    (Just x) >>= k   =  k x
+    Nothing  >>= k   =  Nothing
+    return           =  Just
+    fail s           =  Nothing
+
+-- Either type
+
+
+data  Either a b  =  Left a | Right b   deriving (Eq, Ord, Read, Show)
+
+
+either               :: (a -> c) -> (b -> c) -> Either a b -> c
+either f g (Left x)  =  f x
+either f g (Right y) =  g y
+
+-- IO type
+
+
+data IO a = ... 	-- abstract
+
+
+instance  Functor IO where
+   fmap f x           =  x >>= (return . f)
+
+
+instance Monad IO where
+   (>>=)  = ...
+   return = ...
+   fail s = ioError (userError s)
+
+-- Ordering type
+
+
+data  Ordering  =  LT | EQ | GT
+          deriving (Eq, Ord, Enum, Read, Show, Bounded)
+
+
+-- Standard numeric types.  The data declarations for these types cannot
+-- be expressed directly in Haskell since the constructor lists would be
+-- far too large.
+
+
+data  Int  =  minBound ... -1 | 0 | 1 ... maxBound
+
+instance  Eq       Int  where ...
+
+instance  Ord      Int  where ...
+
+instance  Num      Int  where ...
+
+instance  Real     Int  where ...
+
+instance  Integral Int  where ...
+
+instance  Enum     Int  where ...
+
+instance  Bounded  Int  where ...
+
+
+data  Integer  =  ... -1 | 0 | 1 ...
+
+instance  Eq       Integer  where ...
+
+instance  Ord      Integer  where ...
+
+instance  Num      Integer  where ...
+
+instance  Real     Integer  where ...
+
+instance  Integral Integer  where ...
+
+instance  Enum     Integer  where ...
+
+
+data  Float
+
+instance  Eq         Float  where ...
+
+instance  Ord        Float  where ...
+
+instance  Num        Float  where ...
+
+instance  Real       Float  where ...
+
+instance  Fractional Float  where ...
+
+instance  Floating   Float  where ...
+
+instance  RealFrac   Float  where ...
+
+instance  RealFloat  Float  where ...
+
+
+data  Double
+
+instance  Eq         Double  where ...
+
+instance  Ord        Double  where ...
+
+instance  Num        Double  where ...
+
+instance  Real       Double  where ...
+
+instance  Fractional Double  where ...
+
+instance  Floating   Double  where ...
+
+instance  RealFrac   Double  where ...
+
+instance  RealFloat  Double  where ...
+
+-- The Enum instances for Floats and Doubles are slightly unusual.
+-- The `toEnum' function truncates numbers to Int.  The definitions
+-- of enumFrom and enumFromThen allow floats to be used in arithmetic
+-- series: [0,0.1 .. 0.95].  However, roundoff errors make these somewhat
+-- dubious.  This example may have either 10 or 11 elements, depending on
+-- how 0.1 is represented.
+
+
+instance  Enum Float  where
+    succ x           =  x+1
+    pred x           =  x-1
+    toEnum           =  fromIntegral
+    fromEnum         =  fromInteger . truncate   -- may overflow
+    enumFrom         =  numericEnumFrom
+    enumFromThen     =  numericEnumFromThen
+    enumFromTo       =  numericEnumFromTo
+    enumFromThenTo   =  numericEnumFromThenTo
+
+
+instance  Enum Double  where
+    succ x           =  x+1
+    pred x           =  x-1
+    toEnum           =  fromIntegral
+    fromEnum         =  fromInteger . truncate   -- may overflow
+    enumFrom         =  numericEnumFrom
+    enumFromThen     =  numericEnumFromThen
+    enumFromTo       =  numericEnumFromTo
+    enumFromThenTo   =  numericEnumFromThenTo
+
+
+numericEnumFrom         :: (Fractional a) => a -> [a]
+
+numericEnumFromThen     :: (Fractional a) => a -> a -> [a]
+
+numericEnumFromTo       :: (Fractional a, Ord a) => a -> a -> [a]
+
+numericEnumFromThenTo   :: (Fractional a, Ord a) => a -> a -> a -> [a]
+numericEnumFrom         =  iterate (+1)
+numericEnumFromThen n m =  iterate (+(m-n)) n
+numericEnumFromTo n m   =  takeWhile (<= m+1/2) (numericEnumFrom n)
+numericEnumFromThenTo n n' m = takeWhile p (numericEnumFromThen n n')
+                             where
+                               p | n' >= n   = (<= m + (n'-n)/2)
+                                 | otherwise = (>= m + (n'-n)/2)
+
+-- Lists
+
+
+data  [a]  =  [] | a : [a]  deriving (Eq, Ord)
+-- Not legal Haskell; for illustration only
+
+
+instance Functor [] where
+    fmap = map
+
+
+instance  Monad []  where
+    m >>= k          = concat (map k m)
+    return x         = [x]
+    fail s           = []
+
+-- Tuples
+
+
+data  (a,b)   =  (a,b)    deriving (Eq, Ord, Bounded)
+
+data  (a,b,c) =  (a,b,c)  deriving (Eq, Ord, Bounded)
+-- Not legal Haskell; for illustration only
+
+-- component projections for pairs:
+-- (NB: not provided for triples, quadruples, etc.)
+
+fst              :: (a,b) -> a
+fst (x,y)        =  x
+
+
+snd              :: (a,b) -> b
+snd (x,y)        =  y
+
+-- curry converts an uncurried function to a curried function;
+-- uncurry converts a curried function to a function on pairs.
+
+curry            :: ((a, b) -> c) -> a -> b -> c
+curry f x y      =  f (x, y)
+
+
+uncurry          :: (a -> b -> c) -> ((a, b) -> c)
+uncurry f p      =  f (fst p) (snd p)
+
+-- Misc functions
+
+-- until p f  yields the result of applying f until p holds.
+
+until            :: (a -> Bool) -> (a -> a) -> a -> a
+until p f x 
+     | p x       =  x
+     | otherwise =  until p f (f x)
+
+-- asTypeOf is a type-restricted version of const.  It is usually used
+-- as an infix operator, and its typing forces its first argument
+-- (which is usually overloaded) to have the same type as the second.
+
+asTypeOf         :: a -> a -> a
+asTypeOf         =  const
+
+-- error stops execution and displays an error message
+
+
+error            :: String -> a
+error            =  primError
+
+-- It is expected that compilers will recognize this and insert error
+-- messages that are more appropriate to the context in which undefined 
+-- appears. 
+
+
+undefined        :: a
+undefined        =  error "Prelude.undefined"
+</code></pre></div></div>
+
+<div class="code"><pre class="language-haskell"><code>
+-- Standard list functions
+
+module PreludeList (
+    map, (++), filter, concat, concatMap, 
+    head, last, tail, init, null, length, (!!), 
+    foldl, foldl1, scanl, scanl1, foldr, foldr1, scanr, scanr1,
+    iterate, repeat, replicate, cycle,
+    take, drop, splitAt, takeWhile, dropWhile, span, break,
+    lines, words, unlines, unwords, reverse, and, or,
+    any, all, elem, notElem, lookup,
+    sum, product, maximum, minimum, 
+    zip, zip3, zipWith, zipWith3, unzip, unzip3)
+  where
+
+import qualified Char(isSpace)
+
+infixl 9  !!
+infixr 5  ++
+infix  4  `elem`, `notElem`
+
+-- Map and append
+
+map :: (a -> b) -> [a] -> [b]
+map f []     = []
+map f (x:xs) = f x : map f xs
+
+
+(++) :: [a] -> [a] -> [a]
+[]     ++ ys = ys
+(x:xs) ++ ys = x : (xs ++ ys)
+
+
+filter :: (a -> Bool) -> [a] -> [a]
+filter p []                 = []
+filter p (x:xs) | p x       = x : filter p xs
+                | otherwise = filter p xs
+
+
+concat :: [[a]] -> [a]
+concat xss = foldr (++) [] xss
+
+
+concatMap :: (a -> [b]) -> [a] -> [b]
+concatMap f = concat . map f
+
+-- head and tail extract the first element and remaining elements,
+-- respectively, of a list, which must be non-empty.  last and init
+-- are the dual functions working from the end of a finite list,
+-- rather than the beginning.
+
+
+head             :: [a] -> a
+head (x:_)       =  x
+head []          =  error "Prelude.head: empty list"
+
+
+tail             :: [a] -> [a]
+tail (_:xs)      =  xs
+tail []          =  error "Prelude.tail: empty list"
+
+
+last             :: [a] -> a
+last [x]         =  x
+last (_:xs)      =  last xs
+last []          =  error "Prelude.last: empty list"
+
+
+init             :: [a] -> [a]
+init [x]         =  []
+init (x:xs)      =  x : init xs
+init []          =  error "Prelude.init: empty list"
+
+
+null             :: [a] -> Bool
+null []          =  True
+null (_:_)       =  False
+
+-- length returns the length of a finite list as an Int.
+
+length           :: [a] -> Int
+length []        =  0
+length (_:l)     =  1 + length l
+
+-- List index (subscript) operator, 0-origin
+
+(!!)                :: [a] -> Int -> a
+xs     !! n | n < 0 =  error "Prelude.!!: negative index"
+[]     !! _         =  error "Prelude.!!: index too large"
+(x:_)  !! 0         =  x
+(_:xs) !! n         =  xs !! (n-1)
+
+-- foldl, applied to a binary operator, a starting value (typically the
+-- left-identity of the operator), and a list, reduces the list using
+-- the binary operator, from left to right:
+--  foldl f z [x1, x2, ..., xn] == (...((z `f` x1) `f` x2) `f`...) `f` xn
+-- foldl1 is a variant that has no starting value argument, and  thus must
+-- be applied to non-empty lists.  scanl is similar to foldl, but returns
+-- a list of successive reduced values from the left:
+--      scanl f z [x1, x2, ...] == [z, z `f` x1, (z `f` x1) `f` x2, ...]
+-- Note that  last (scanl f z xs) == foldl f z xs.
+-- scanl1 is similar, again without the starting element:
+--      scanl1 f [x1, x2, ...] == [x1, x1 `f` x2, ...]
+
+
+foldl            :: (a -> b -> a) -> a -> [b] -> a
+foldl f z []     =  z
+foldl f z (x:xs) =  foldl f (f z x) xs
+
+
+foldl1           :: (a -> a -> a) -> [a] -> a
+foldl1 f (x:xs)  =  foldl f x xs
+foldl1 _ []      =  error "Prelude.foldl1: empty list"
+
+
+scanl            :: (a -> b -> a) -> a -> [b] -> [a]
+scanl f q xs     =  q : (case xs of
+                            []   -> []
+                            x:xs -> scanl f (f q x) xs)
+
+
+scanl1           :: (a -> a -> a) -> [a] -> [a]
+scanl1 f (x:xs)  =  scanl f x xs
+scanl1 _ []      =  []
+
+-- foldr, foldr1, scanr, and scanr1 are the right-to-left duals of the
+-- above functions.
+
+
+foldr            :: (a -> b -> b) -> b -> [a] -> b
+foldr f z []     =  z
+foldr f z (x:xs) =  f x (foldr f z xs)
+
+
+foldr1           :: (a -> a -> a) -> [a] -> a
+foldr1 f [x]     =  x
+foldr1 f (x:xs)  =  f x (foldr1 f xs)
+foldr1 _ []      =  error "Prelude.foldr1: empty list"
+
+
+scanr             :: (a -> b -> b) -> b -> [a] -> [b]
+scanr f q0 []     =  [q0]
+scanr f q0 (x:xs) =  f x q : qs
+                     where qs@(q:_) = scanr f q0 xs 
+
+
+scanr1          :: (a -> a -> a) -> [a] -> [a]
+scanr1 f []     =  []
+scanr1 f [x]    =  [x]
+scanr1 f (x:xs) =  f x q : qs
+                   where qs@(q:_) = scanr1 f xs 
+
+-- iterate f x returns an infinite list of repeated applications of f to x:
+-- iterate f x == [x, f x, f (f x), ...]
+
+iterate          :: (a -> a) -> a -> [a]
+iterate f x      =  x : iterate f (f x)
+
+-- repeat x is an infinite list, with x the value of every element.
+
+repeat           :: a -> [a]
+repeat x         =  xs where xs = x:xs
+
+-- replicate n x is a list of length n with x the value of every element
+
+replicate        :: Int -> a -> [a]
+replicate n x    =  take n (repeat x)
+
+-- cycle ties a finite list into a circular one, or equivalently,
+-- the infinite repetition of the original list.  It is the identity
+-- on infinite lists.
+
+
+cycle            :: [a] -> [a]
+cycle []         =  error "Prelude.cycle: empty list"
+cycle xs         =  xs' where xs' = xs ++ xs'
+
+-- take n, applied to a list xs, returns the prefix of xs of length n,
+-- or xs itself if n > length xs.  drop n xs returns the suffix of xs
+-- after the first n elements, or [] if n > length xs.  splitAt n xs
+-- is equivalent to (take n xs, drop n xs).
+
+
+take                   :: Int -> [a] -> [a]
+take n _      | n <= 0 =  []
+take _ []              =  []
+take n (x:xs)          =  x : take (n-1) xs
+
+
+drop                   :: Int -> [a] -> [a]
+drop n xs     | n <= 0 =  xs
+drop _ []              =  []
+drop n (_:xs)          =  drop (n-1) xs
+
+
+splitAt                  :: Int -> [a] -> ([a],[a])
+splitAt n xs             =  (take n xs, drop n xs)
+
+-- takeWhile, applied to a predicate p and a list xs, returns the longest
+-- prefix (possibly empty) of xs of elements that satisfy p.  dropWhile p xs
+-- returns the remaining suffix.  span p xs is equivalent to 
+-- (takeWhile p xs, dropWhile p xs), while break p uses the negation of p.
+
+
+takeWhile               :: (a -> Bool) -> [a] -> [a]
+takeWhile p []          =  []
+takeWhile p (x:xs) 
+            | p x       =  x : takeWhile p xs
+            | otherwise =  []
+
+
+dropWhile               :: (a -> Bool) -> [a] -> [a]
+dropWhile p []          =  []
+dropWhile p xs@(x:xs')
+            | p x       =  dropWhile p xs'
+            | otherwise =  xs
+
+
+span, break             :: (a -> Bool) -> [a] -> ([a],[a])
+span p []            = ([],[])
+span p xs@(x:xs') 
+            | p x       =  (x:ys,zs) 
+            | otherwise =  ([],xs)
+                           where (ys,zs) = span p xs'
+
+break p                 =  span (not . p)
+
+-- lines breaks a string up into a list of strings at newline characters.
+-- The resulting strings do not contain newlines.  Similary, words
+-- breaks a string up into a list of words, which were delimited by
+-- white space.  unlines and unwords are the inverse operations.
+-- unlines joins lines with terminating newlines, and unwords joins
+-- words with separating spaces.
+
+
+lines            :: String -> [String]
+lines ""         =  []
+lines s          =  let (l, s') = break (== '\n') s
+                      in  l : case s' of
+                                []      -> []
+                                (_:s'') -> lines s''
+
+
+words            :: String -> [String]
+words s          =  case dropWhile Char.isSpace s of
+                      "" -> []
+                      s' -> w : words s''
+                            where (w, s'') = break Char.isSpace s'
+
+
+unlines          :: [String] -> String
+unlines          =  concatMap (++ "\n")
+
+
+unwords          :: [String] -> String
+unwords []       =  ""
+unwords ws       =  foldr1 (\w s -> w ++ ' ':s) ws
+
+-- reverse xs returns the elements of xs in reverse order.  xs must be finite.
+
+reverse          :: [a] -> [a]
+reverse          =  foldl (flip (:)) []
+
+-- and returns the conjunction of a Boolean list.  For the result to be
+-- True, the list must be finite; False, however, results from a False
+-- value at a finite index of a finite or infinite list.  or is the
+-- disjunctive dual of and.
+
+and, or          :: [Bool] -> Bool
+and              =  foldr (&&) True
+or               =  foldr (||) False
+
+-- Applied to a predicate and a list, any determines if any element
+-- of the list satisfies the predicate.  Similarly, for all.
+
+any, all         :: (a -> Bool) -> [a] -> Bool
+any p            =  or . map p
+all p            =  and . map p
+
+-- elem is the list membership predicate, usually written in infix form,
+-- e.g., x `elem` xs.  notElem is the negation.
+
+elem, notElem    :: (Eq a) => a -> [a] -> Bool
+elem x           =  any (== x)
+notElem x        =  all (/= x)
+
+-- lookup key assocs looks up a key in an association list.
+
+lookup           :: (Eq a) => a -> [(a,b)] -> Maybe b
+lookup key []    =  Nothing
+lookup key ((x,y):xys)
+    | key == x   =  Just y
+    | otherwise  =  lookup key xys
+
+-- sum and product compute the sum or product of a finite list of numbers.
+
+sum, product     :: (Num a) => [a] -> a
+sum              =  foldl (+) 0  
+product          =  foldl (*) 1
+
+-- maximum and minimum return the maximum or minimum value from a list,
+-- which must be non-empty, finite, and of an ordered type.
+
+maximum, minimum :: (Ord a) => [a] -> a
+maximum []       =  error "Prelude.maximum: empty list"
+maximum xs       =  foldl1 max xs
+
+minimum []       =  error "Prelude.minimum: empty list"
+minimum xs       =  foldl1 min xs
+
+-- zip takes two lists and returns a list of corresponding pairs.  If one
+-- input list is short, excess elements of the longer list are discarded.
+-- zip3 takes three lists and returns a list of triples.  Zips for larger
+-- tuples are in the List library
+
+
+zip              :: [a] -> [b] -> [(a,b)]
+zip              =  zipWith (,)
+
+
+zip3             :: [a] -> [b] -> [c] -> [(a,b,c)]
+zip3             =  zipWith3 (,,)
+
+-- The zipWith family generalises the zip family by zipping with the
+-- function given as the first argument, instead of a tupling function.
+-- For example, zipWith (+) is applied to two lists to produce the list
+-- of corresponding sums.
+
+
+zipWith          :: (a->b->c) -> [a]->[b]->[c]
+zipWith z (a:as) (b:bs)
+                 =  z a b : zipWith z as bs
+zipWith _ _ _    =  []
+
+
+zipWith3         :: (a->b->c->d) -> [a]->[b]->[c]->[d]
+zipWith3 z (a:as) (b:bs) (c:cs)
+                 =  z a b c : zipWith3 z as bs cs
+zipWith3 _ _ _ _ =  []
+
+
+-- unzip transforms a list of pairs into a pair of lists.  
+
+
+unzip            :: [(a,b)] -> ([a],[b])
+unzip            =  foldr (\(a,b) ~(as,bs) -> (a:as,b:bs)) ([],[])
+
+
+unzip3           :: [(a,b,c)] -> ([a],[b],[c])
+unzip3           =  foldr (\(a,b,c) ~(as,bs,cs) -> (a:as,b:bs,c:cs))
+                          ([],[],[])
+</code></pre></div></div>
+
+<div class="code"><pre class="language-haskell"><code>
+module PreludeText (
+    ReadS, ShowS,
+    Read(readsPrec, readList),
+    Show(showsPrec, show, showList),
+    reads, shows, read, lex,
+    showChar, showString, readParen, showParen ) where
+
+-- The instances of Read and Show for
+--      Bool, Maybe, Either, Ordering
+-- are done via "deriving" clauses in Prelude.hs
+
+import Char(isSpace, isAlpha, isDigit, isAlphaNum,
+            showLitChar, readLitChar, lexLitChar)
+
+import Numeric(showSigned, showInt, readSigned, readDec, showFloat,
+               readFloat, lexDigits)
+
+
+type  ReadS a  = String -> [(a,String)]
+
+type  ShowS    = String -> String
+
+
+class  Read a  where
+    readsPrec        :: Int -> ReadS a
+    readList         :: ReadS [a]
+
+        -- Minimal complete definition:
+        --      readsPrec
+    readList         = readParen False (\r -> [pr | ("[",s)  <- lex r,
+                                                    pr       <- readl s])
+                       where readl  s = [([],t)   | ("]",t)  <- lex s] ++
+                                        [(x:xs,u) | (x,t)    <- reads s,
+                                                    (xs,u)   <- readl' t]
+                             readl' s = [([],t)   | ("]",t)  <- lex s] ++
+                                        [(x:xs,v) | (",",t)  <- lex s,
+                                                    (x,u)    <- reads t,
+                                                    (xs,v)   <- readl' u]
+
+
+class  Show a  where
+    showsPrec        :: Int -> a -> ShowS
+    show             :: a -> String 
+    showList         :: [a] -> ShowS
+
+        -- Mimimal complete definition:
+        --      show or showsPrec
+    showsPrec _ x s   = show x ++ s
+
+    show x            = showsPrec 0 x ""
+
+    showList []       = showString "[]"
+    showList (x:xs)   = showChar '[' . shows x . showl xs
+                        where showl []     = showChar ']'
+                              showl (x:xs) = showChar ',' . shows x .
+                                             showl xs
+
+
+reads            :: (Read a) => ReadS a
+reads            =  readsPrec 0
+
+
+shows            :: (Show a) => a -> ShowS
+shows            =  showsPrec 0
+
+
+read             :: (Read a) => String -> a
+read s           =  case [x | (x,t) <- reads s, ("","") <- lex t] of
+                         [x] -> x
+                         []  -> error "Prelude.read: no parse"
+                         _   -> error "Prelude.read: ambiguous parse"
+
+
+showChar         :: Char -> ShowS
+showChar         =  (:)
+
+
+showString       :: String -> ShowS
+showString       =  (++)
+
+
+showParen        :: Bool -> ShowS -> ShowS
+showParen b p    =  if b then showChar '(' . p . showChar ')' else p
+
+
+readParen        :: Bool -> ReadS a -> ReadS a
+readParen b g    =  if b then mandatory else optional
+                    where optional r  = g r ++ mandatory r
+                          mandatory r = [(x,u) | ("(",s) <- lex r,
+                                                 (x,t)   <- optional s,
+                                                 (")",u) <- lex t    ]
+
+-- This lexer is not completely faithful to the Haskell lexical syntax.
+-- Current limitations:
+--    Qualified names are not handled properly
+--    Octal and hexidecimal numerics are not recognized as a single token
+--    Comments are not treated properly
+
+
+lex              :: ReadS String
+lex ""           =  [("","")]
+lex (c:s)
+   | isSpace c   =  lex (dropWhile isSpace s)
+lex ('\'':s)     =  [('\'':ch++"'", t) | (ch,'\'':t)  <- lexLitChar s,
+                                         ch /= "'" ]
+lex ('"':s)      =  [('"':str, t)      | (str,t) <- lexString s]
+                    where
+                    lexString ('"':s) = [("\"",s)]
+                    lexString s = [(ch++str, u)
+                                         | (ch,t)  <- lexStrItem s,
+                                           (str,u) <- lexString t  ]
+
+                    lexStrItem ('\\':'&':s) =  [("\\&",s)]
+                    lexStrItem ('\\':c:s) | isSpace c
+                                           =  [("\\&",t) | 
+                                               '\\':t <-
+                                                   [dropWhile isSpace s]]
+                    lexStrItem s           =  lexLitChar s
+
+lex (c:s) | isSingle c = [([c],s)]
+          | isSym c    = [(c:sym,t)       | (sym,t) <- [span isSym s]]
+          | isAlpha c  = [(c:nam,t)       | (nam,t) <- [span isIdChar s]]
+          | isDigit c  = [(c:ds++fe,t)    | (ds,s)  <- [span isDigit s],
+                                            (fe,t)  <- lexFracExp s     ]
+          | otherwise  = []    -- bad character
+             where
+              isSingle c =  c `elem` ",;()[]{}_`"
+              isSym c    =  c `elem` "!@#$%&*+./<=>?\\^|:-~"
+              isIdChar c =  isAlphaNum c || c `elem` "_'"
+
+              lexFracExp ('.':c:cs) | isDigit c
+                            = [('.':ds++e,u) | (ds,t) <- lexDigits (c:cs),
+                                               (e,u)  <- lexExp t]
+              lexFracExp s  = lexExp s
+
+              lexExp (e:s) | e `elem` "eE"
+                       = [(e:c:ds,u) | (c:t)  <- [s], c `elem` "+-",
+                                                 (ds,u) <- lexDigits t] ++
+                         [(e:ds,t)   | (ds,t) <- lexDigits s]
+              lexExp s = [("",s)]
+
+
+instance  Show Int  where
+    showsPrec n = showsPrec n . toInteger
+        -- Converting to Integer avoids
+        -- possible difficulty with minInt
+
+
+instance  Read Int  where
+  readsPrec p r = [(fromInteger i, t) | (i,t) <- readsPrec p r]
+        -- Reading at the Integer type avoids
+        -- possible difficulty with minInt
+
+
+instance  Show Integer  where
+    showsPrec           = showSigned showInt
+
+
+instance  Read Integer  where
+    readsPrec p         = readSigned readDec
+
+
+instance  Show Float  where 
+    showsPrec p         = showFloat
+           
+
+instance  Read Float  where
+    readsPrec p         = readSigned readFloat
+
+
+instance  Show Double  where
+    showsPrec p         = showFloat
+
+
+instance  Read Double  where
+    readsPrec p         = readSigned readFloat
+
+
+instance  Show ()  where
+    showsPrec p () = showString "()"
+
+
+instance Read () where
+    readsPrec p    = readParen False
+                            (\r -> [((),t) | ("(",s) <- lex r,
+                                             (")",t) <- lex s ] )
+
+instance  Show Char  where
+    showsPrec p '\'' = showString "'\\''"
+    showsPrec p c    = showChar '\'' . showLitChar c . showChar '\''
+
+    showList cs = showChar '"' . showl cs
+                 where showl ""       = showChar '"'
+                       showl ('"':cs) = showString "\\\"" . showl cs
+                       showl (c:cs)   = showLitChar c . showl cs
+
+
+instance  Read Char  where
+    readsPrec p      = readParen False
+                            (\r -> [(c,t) | ('\'':s,t)<- lex r,
+                                            (c,"\'")  <- readLitChar s])
+
+    readList = readParen False (\r -> [(l,t) | ('"':s, t) <- lex r,
+                                               (l,_)      <- readl s ])
+        where readl ('"':s)      = [("",s)]
+              readl ('\\':'&':s) = readl s
+              readl s            = [(c:cs,u) | (c ,t) <- readLitChar s,
+                                               (cs,u) <- readl t       ]
+
+
+instance  (Show a) => Show [a]  where
+    showsPrec p      = showList
+
+
+instance  (Read a) => Read [a]  where
+    readsPrec p      = readList
+
+-- Tuples
+
+
+instance  (Show a, Show b) => Show (a,b)  where
+    showsPrec p (x,y) = showChar '(' . shows x . showChar ',' .
+                                       shows y . showChar ')'
+
+
+instance  (Read a, Read b) => Read (a,b)  where
+    readsPrec p       = readParen False
+                            (\r -> [((x,y), w) | ("(",s) <- lex r,
+                                                 (x,t)   <- reads s,
+                                                 (",",u) <- lex t,
+                                                 (y,v)   <- reads u,
+                                                 (")",w) <- lex v ] )
+
+-- Other tuples have similar Read and Show instances
+</code></pre></div></div>
+
+<div class="code"><pre class="language-haskell"><code>
+module PreludeIO (
+    FilePath, IOError, ioError, userError, catch,
+    putChar, putStr, putStrLn, print,
+    getChar, getLine, getContents, interact,
+    readFile, writeFile, appendFile, readIO, readLn
+  ) where
+
+import PreludeBuiltin
+
+
+
+type  FilePath = String
+
+
+data IOError    -- The internals of this type are system dependent
+
+
+instance  Show IOError  where ...
+
+instance  Eq IOError  where ...
+
+
+ioError    ::  IOError -> IO a 
+ioError    =   primIOError
+   
+
+userError  ::  String -> IOError
+userError  =   primUserError
+   
+
+catch      ::  IO a -> (IOError -> IO a) -> IO a 
+catch      =   primCatch
+   
+
+putChar    :: Char -> IO ()
+putChar    =  primPutChar
+   
+
+putStr     :: String -> IO ()
+putStr s   =  mapM_ putChar s
+   
+
+putStrLn   :: String -> IO ()
+putStrLn s =  do putStr s
+                 putStr "\n"
+   
+
+print      :: Show a => a -> IO ()
+print x    =  putStrLn (show x)
+   
+
+getChar    :: IO Char
+getChar    =  primGetChar
+   
+
+getLine    :: IO String
+getLine    =  do c <- getChar
+                 if c == '\n' then return "" else 
+                    do s <- getLine
+                       return (c:s)
+            
+
+getContents :: IO String
+getContents =  primGetContents
+
+
+interact    ::  (String -> String) -> IO ()
+-- The hSetBuffering ensures the expected interactive behaviour
+interact f  =  do hSetBuffering stdin  NoBuffering
+                  hSetBuffering stdout NoBuffering
+                  s <- getContents
+                  putStr (f s)
+
+
+readFile   :: FilePath -> IO String
+readFile   =  primReadFile
+   
+
+writeFile  :: FilePath -> String -> IO ()
+writeFile  =  primWriteFile
+   
+
+appendFile :: FilePath -> String -> IO ()
+appendFile =  primAppendFile
+
+  -- raises an exception instead of an error
+
+readIO   :: Read a => String -> IO a
+readIO s =  case [x | (x,t) <- reads s, ("","") <- lex t] of
+              [x] -> return x
+              []  -> ioError (userError "Prelude.readIO: no parse")
+              _   -> ioError (userError "Prelude.readIO: ambiguous parse")
+
+
+readLn :: Read a => IO a
+readLn =  do l <- getLine
+             r <- readIO l
+             return r
 </code></pre></div></div>
 
 <div class="code"><pre class="language-haskell"><code>
@@ -3309,6 +4603,321 @@ errorEmptyList fun =
 </code></pre></div>
 
 <div class="code"><pre class="language-haskell"><code>
+{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE CPP #-}
+
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Control.Applicative
+-- Copyright   :  Conor McBride and Ross Paterson 2005
+-- License     :  BSD-style (see the LICENSE file in the distribution)
+--
+-- Maintainer  :  libraries@haskell.org
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- This module describes a structure intermediate between a functor and
+-- a monad (technically, a strong lax monoidal functor).  Compared with
+-- monads, this interface lacks the full power of the binding operation
+-- '>>=', but
+--
+-- * it has more instances.
+--
+-- * it is sufficient for many uses, e.g. context-free parsing, or the
+--   'Data.Traversable.Traversable' class.
+--
+-- * instances can perform analysis of computations before they are
+--   executed, and thus produce shared optimizations.
+--
+-- This interface was introduced for parsers by Niklas R&#xF6;jemo, because
+-- it admits more sharing than the monadic interface.  The names here are
+-- mostly based on parsing work by Doaitse Swierstra.
+--
+-- For more details, see /Applicative Programming with Effects/,
+-- by Conor McBride and Ross Paterson, online at
+-- <http://www.soi.city.ac.uk/~ross/papers/Applicative.html>.
+
+module Control.Applicative (
+    -- * Applicative functors
+    Applicative(..),
+    -- * Alternatives
+    Alternative(..),
+    -- * Instances
+    Const(..), WrappedMonad(..), WrappedArrow(..), ZipList(..),
+    -- * Utility functions
+    (<$>), (<$), (<**>),
+    liftA, liftA2, liftA3,
+    optional,
+    ) where
+
+import Prelude hiding (id,(.))
+
+import Control.Category
+import Control.Arrow
+import Control.Monad (liftM, ap, MonadPlus(..))
+#ifndef __NHC__
+import Control.Monad.ST.Safe (ST)
+import qualified Control.Monad.ST.Lazy.Safe as Lazy (ST)
+#endif
+import Data.Functor ((<$>), (<$))
+import Data.Monoid (Monoid(..))
+
+import Text.ParserCombinators.ReadP
+#ifndef __NHC__
+  (ReadP)
+#else
+  (ReadPN)
+#define ReadP (ReadPN b)
+#endif
+
+import Text.ParserCombinators.ReadPrec (ReadPrec)
+
+#ifdef __GLASGOW_HASKELL__
+import GHC.Conc (STM, retry, orElse)
+#endif
+
+infixl 3 <|>
+infixl 4 <*>, <*, *>, <**>
+
+-- | A functor with application, providing operations to
+--
+-- * embed pure expressions ('pure'), and
+--
+-- * sequence computations and combine their results ('<*>').
+--
+-- A minimal complete definition must include implementations of these
+-- functions satisfying the following laws:
+--
+-- [/identity/]
+--      @'pure' 'id' '<*>' v = v@
+--
+-- [/composition/]
+--      @'pure' (.) '<*>' u '<*>' v '<*>' w = u '<*>' (v '<*>' w)@
+--
+-- [/homomorphism/]
+--      @'pure' f '<*>' 'pure' x = 'pure' (f x)@
+--
+-- [/interchange/]
+--      @u '<*>' 'pure' y = 'pure' ('$' y) '<*>' u@
+--
+-- The other methods have the following default definitions, which may
+-- be overridden with equivalent specialized implementations:
+--
+-- @
+--      u '*>' v = 'pure' ('const' 'id') '<*>' u '<*>' v
+--      u '<*' v = 'pure' 'const' '<*>' u '<*>' v
+-- @
+--
+-- As a consequence of these laws, the 'Functor' instance for @f@ will satisfy
+--
+-- @
+--      'fmap' f x = 'pure' f '<*>' x
+-- @
+--
+-- If @f@ is also a 'Monad', it should satisfy @'pure' = 'return'@ and
+-- @('<*>') = 'ap'@ (which implies that 'pure' and '<*>' satisfy the
+-- applicative functor laws).
+
+class Functor f => Applicative f where
+    -- | Lift a value.
+    pure :: a -> f a
+
+    -- | Sequential application.
+    (<*>) :: f (a -> b) -> f a -> f b
+
+    -- | Sequence actions, discarding the value of the first argument.
+    (*>) :: f a -> f b -> f b
+    (*>) = liftA2 (const id)
+
+    -- | Sequence actions, discarding the value of the second argument.
+    (<*) :: f a -> f b -> f a
+    (<*) = liftA2 const
+
+-- | A monoid on applicative functors.
+--
+-- Minimal complete definition: 'empty' and '<|>'.
+--
+-- If defined, 'some' and 'many' should be the least solutions
+-- of the equations:
+--
+-- * @some v = (:) '<$>' v '<*>' many v@
+--
+-- * @many v = some v '<|>' 'pure' []@
+class Applicative f => Alternative f where
+    -- | The identity of '<|>'
+    empty :: f a
+    -- | An associative binary operation
+    (<|>) :: f a -> f a -> f a
+
+    -- | One or more.
+    some :: f a -> f [a]
+    some v = some_v
+      where
+        many_v = some_v <|> pure []
+        some_v = (:) <$> v <*> many_v
+
+    -- | Zero or more.
+    many :: f a -> f [a]
+    many v = many_v
+      where
+        many_v = some_v <|> pure []
+        some_v = (:) <$> v <*> many_v
+
+-- instances for Prelude types
+
+instance Applicative Maybe where
+    pure = return
+    (<*>) = ap
+
+instance Alternative Maybe where
+    empty = Nothing
+    Nothing <|> r = r
+    l       <|> _ = l
+
+instance Applicative [] where
+    pure = return
+    (<*>) = ap
+
+instance Alternative [] where
+    empty = []
+    (<|>) = (++)
+
+instance Applicative IO where
+    pure = return
+    (<*>) = ap
+
+#ifndef __NHC__
+instance Applicative (ST s) where
+    pure = return
+    (<*>) = ap
+
+instance Applicative (Lazy.ST s) where
+    pure = return
+    (<*>) = ap
+#endif
+
+#ifdef __GLASGOW_HASKELL__
+instance Applicative STM where
+    pure = return
+    (<*>) = ap
+
+instance Alternative STM where
+    empty = retry
+    (<|>) = orElse
+#endif
+
+instance Applicative ((->) a) where
+    pure = const
+    (<*>) f g x = f x (g x)
+
+instance Monoid a => Applicative ((,) a) where
+    pure x = (mempty, x)
+    (u, f) <*> (v, x) = (u `mappend` v, f x)
+
+instance Applicative (Either e) where
+    pure          = Right
+    Left  e <*> _ = Left e
+    Right f <*> r = fmap f r
+
+instance Applicative ReadP where
+    pure = return
+    (<*>) = ap
+
+instance Alternative ReadP where
+    empty = mzero
+    (<|>) = mplus
+
+instance Applicative ReadPrec where
+    pure = return
+    (<*>) = ap
+
+instance Alternative ReadPrec where
+    empty = mzero
+    (<|>) = mplus
+
+instance Arrow a => Applicative (ArrowMonad a) where
+   pure x = ArrowMonad (arr (const x))
+   ArrowMonad f <*> ArrowMonad x = ArrowMonad (f &&& x >>> arr (uncurry id))
+
+instance ArrowPlus a => Alternative (ArrowMonad a) where
+   empty = ArrowMonad zeroArrow
+   ArrowMonad x <|> ArrowMonad y = ArrowMonad (x <+> y)
+
+-- new instances
+
+newtype Const a b = Const { getConst :: a }
+
+instance Functor (Const m) where
+    fmap _ (Const v) = Const v
+
+instance Monoid m => Applicative (Const m) where
+    pure _ = Const mempty
+    Const f <*> Const v = Const (f `mappend` v)
+
+newtype WrappedMonad m a = WrapMonad { unwrapMonad :: m a }
+
+instance Monad m => Functor (WrappedMonad m) where
+    fmap f (WrapMonad v) = WrapMonad (liftM f v)
+
+instance Monad m => Applicative (WrappedMonad m) where
+    pure = WrapMonad . return
+    WrapMonad f <*> WrapMonad v = WrapMonad (f `ap` v)
+
+instance MonadPlus m => Alternative (WrappedMonad m) where
+    empty = WrapMonad mzero
+    WrapMonad u <|> WrapMonad v = WrapMonad (u `mplus` v)
+
+newtype WrappedArrow a b c = WrapArrow { unwrapArrow :: a b c }
+
+instance Arrow a => Functor (WrappedArrow a b) where
+    fmap f (WrapArrow a) = WrapArrow (a >>> arr f)
+
+instance Arrow a => Applicative (WrappedArrow a b) where
+    pure x = WrapArrow (arr (const x))
+    WrapArrow f <*> WrapArrow v = WrapArrow (f &&& v >>> arr (uncurry id))
+
+instance (ArrowZero a, ArrowPlus a) => Alternative (WrappedArrow a b) where
+    empty = WrapArrow zeroArrow
+    WrapArrow u <|> WrapArrow v = WrapArrow (u <+> v)
+
+-- | Lists, but with an 'Applicative' functor based on zipping, so that
+--
+-- @f '<$>' 'ZipList' xs1 '<*>' ... '<*>' 'ZipList' xsn = 'ZipList' (zipWithn f xs1 ... xsn)@
+--
+newtype ZipList a = ZipList { getZipList :: [a] }
+
+instance Functor ZipList where
+    fmap f (ZipList xs) = ZipList (map f xs)
+
+instance Applicative ZipList where
+    pure x = ZipList (repeat x)
+    ZipList fs <*> ZipList xs = ZipList (zipWith id fs xs)
+
+-- extra functions
+
+-- | A variant of '<*>' with the arguments reversed.
+(<**>) :: Applicative f => f a -> f (a -> b) -> f b
+(<**>) = liftA2 (flip ($))
+
+-- | Lift a function to actions.
+-- This function may be used as a value for `fmap` in a `Functor` instance.
+liftA :: Applicative f => (a -> b) -> f a -> f b
+liftA f a = pure f <*> a
+
+-- | Lift a binary function to actions.
+liftA2 :: Applicative f => (a -> b -> c) -> f a -> f b -> f c
+liftA2 f a b = f <$> a <*> b
+
+-- | Lift a ternary function to actions.
+liftA3 :: Applicative f => (a -> b -> c -> d) -> f a -> f b -> f c -> f d
+liftA3 f a b c = f <$> a <*> b <*> c
+
+-- | One or none.
+optional :: Alternative f => f a -> f (Maybe a)
+optional v = Just <$> v <|> pure Nothing
+</code></pre></div>
+
+<div class="code"><pre class="language-haskell"><code>
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Control.Monad.Trans.State.Lazy
@@ -3675,6 +5284,2497 @@ sumTree is a little helper function that does not use the State monad:
 > sumTree (Node e t1 t2) = e + (sumTree t1) + (sumTree t2)
 
 -}
+</code></pre></div>
+
+<div class="code"><pre class="language-haskell"><code>
+{-# LANGUAGE CPP, ExistentialQuantification, FlexibleContexts, Rank2Types,
+             TypeSynonymInstances, MultiParamTypeClasses, FlexibleInstances,
+             UndecidableInstances, DeriveDataTypeable, GeneralizedNewtypeDeriving,
+             DeriveFunctor, DeriveFoldable, DeriveTraversable
+  #-}
+module Agda.TypeChecking.Monad.Base where
+
+import Control.Arrow
+import qualified Control.Concurrent as C
+import Control.DeepSeq
+import Control.Exception as E
+import Control.Monad.Error
+import Control.Monad.State
+import Control.Monad.Reader
+import Control.Applicative
+import Data.Function
+import Data.Int
+import Data.Map as Map
+import Data.Set as Set
+import Data.Sequence as Seq
+import Data.Typeable (Typeable)
+import Data.Foldable
+import Data.Traversable
+import Data.IORef
+import Data.Hashable
+
+import Agda.Syntax.Common
+import qualified Agda.Syntax.Concrete as C
+import qualified Agda.Syntax.Concrete.Definitions as D
+import qualified Agda.Syntax.Abstract as A
+import Agda.Syntax.Internal
+import Agda.Syntax.Position
+import Agda.Syntax.Scope.Base
+import Agda.Utils.HashMap as HMap
+
+import Agda.TypeChecking.CompiledClause
+
+import Agda.Interaction.Exceptions
+import {-# SOURCE #-} Agda.Interaction.FindFile
+import Agda.Interaction.Options
+import qualified Agda.Interaction.Highlighting.Range as R
+import {-# SOURCE #-} Agda.Interaction.Response
+  (InteractionOutputCallback, defaultInteractionOutputCallback)
+import Agda.Interaction.Highlighting.Precise
+  (CompressedFile, HighlightingInfo)
+import Data.Monoid
+
+import qualified Agda.Compiler.JS.Syntax as JS
+
+import Agda.Utils.FileName
+import Agda.Utils.Fresh
+import Agda.Utils.Monad
+import Agda.Utils.Permutation
+import Agda.Utils.Pretty
+import Agda.Utils.Time
+
+#include "../../undefined.h"
+import Agda.Utils.Impossible
+
+---------------------------------------------------------------------------
+-- * Type checking state
+---------------------------------------------------------------------------
+
+data TCState =
+    TCSt { stFreshThings       :: FreshThings
+         , stSyntaxInfo        :: CompressedFile
+           -- ^ Highlighting info.
+         , stTokens            :: CompressedFile
+           -- ^ Highlighting info for tokens (but not those tokens for
+           -- which highlighting exists in 'stSyntaxInfo').
+         , stTermErrs          :: Seq TerminationError
+	 , stMetaStore	       :: MetaStore
+	 , stInteractionPoints :: InteractionPoints
+	 , stAwakeConstraints    :: Constraints
+	 , stSleepingConstraints :: Constraints
+         , stDirty               :: Bool
+         , stOccursCheckDefs   :: Set QName
+           -- ^ Definitions to be considered during occurs check.
+           --   Initialized to the current mutual block before the check.
+	 , stSignature	       :: Signature
+	 , stImports	       :: Signature
+	 , stImportedModules   :: Set ModuleName
+         , stModuleToSource    :: ModuleToSource
+	 , stVisitedModules    :: VisitedModules
+         , stCurrentModule     :: Maybe ModuleName
+           -- ^ The current module is available after it has been type
+           -- checked.
+	 , stScope	       :: ScopeInfo
+         , stPatternSyns       :: A.PatternSynDefns
+         , stPatternSynImports :: A.PatternSynDefns
+	 , stPragmaOptions     :: PragmaOptions
+           -- ^ Options applying to the current file. @OPTIONS@
+           -- pragmas only affect this field.
+	 , stStatistics	       :: Statistics
+         , stExtLambdaTele     :: Map QName (Int , Int)
+	 , stMutualBlocks      :: Map MutualId (Set QName)
+	 , stLocalBuiltins     :: BuiltinThings PrimFun
+         , stImportedBuiltins  :: BuiltinThings PrimFun
+         , stHaskellImports    :: Set String
+           -- ^ Imports that should be generated by the compiler (this
+           -- includes imports from imported modules).
+         , stPersistent        :: PersistentTCState
+         , stInteractionOutputCallback  :: InteractionOutputCallback
+           -- ^ Callback fuction to call when there is a response
+           --   to give to the interactive frontend.
+           --   See the documentation of 'InteractionOutputCallback'.
+	 }
+
+-- | A part of the state which is not reverted when an error is thrown
+-- or the state is reset.
+
+data PersistentTCState = PersistentTCSt
+  { stDecodedModules    :: DecodedModules
+  , stPersistentOptions :: CommandLineOptions
+    -- ^ Options which apply to all files, unless overridden.
+  }
+
+data FreshThings =
+	Fresh { fMeta	     :: MetaId
+	      , fInteraction :: InteractionId
+	      , fMutual	     :: MutualId
+	      , fName	     :: NameId
+	      , fCtx	     :: CtxId
+              , fProblem     :: ProblemId
+              , fInt         :: Int
+                -- ^ Can be used for various things.
+	      }
+    deriving (Show)
+
+initState :: TCState
+initState =
+    TCSt { stFreshThings       = (Fresh 0 0 0 (NameId 0 0) 0 0 0) { fProblem = 1 }
+	 , stMetaStore	       = Map.empty
+	 , stSyntaxInfo        = mempty
+	 , stTokens            = mempty
+	 , stTermErrs          = Seq.empty
+	 , stInteractionPoints = Map.empty
+	 , stAwakeConstraints    = []
+	 , stSleepingConstraints = []
+         , stDirty               = False
+         , stOccursCheckDefs   = Set.empty
+	 , stSignature	       = emptySignature
+	 , stImports	       = emptySignature
+	 , stImportedModules   = Set.empty
+         , stModuleToSource    = Map.empty
+	 , stVisitedModules    = Map.empty
+         , stCurrentModule     = Nothing
+	 , stScope	       = emptyScopeInfo
+	 , stPatternSyns       = Map.empty
+         , stPatternSynImports = Map.empty
+	 , stPragmaOptions     = defaultInteractionOptions
+	 , stStatistics	       = Map.empty
+         , stExtLambdaTele     = Map.empty
+	 , stMutualBlocks      = Map.empty
+	 , stLocalBuiltins     = Map.empty
+	 , stImportedBuiltins  = Map.empty
+         , stHaskellImports    = Set.empty
+         , stPersistent        = PersistentTCSt
+           { stPersistentOptions = defaultOptions
+	   , stDecodedModules    = Map.empty
+           }
+         , stInteractionOutputCallback = defaultInteractionOutputCallback
+	 }
+
+stBuiltinThings :: TCState -> BuiltinThings PrimFun
+stBuiltinThings s = stLocalBuiltins s `Map.union` stImportedBuiltins s
+
+instance HasFresh MetaId FreshThings where
+    nextFresh s = (i, s { fMeta = i + 1 })
+	where
+	    i = fMeta s
+
+instance HasFresh MutualId FreshThings where
+    nextFresh s = (i, s { fMutual = i + 1 })
+	where
+	    i = fMutual s
+
+instance HasFresh InteractionId FreshThings where
+    nextFresh s = (i, s { fInteraction = i + 1 })
+	where
+	    i = fInteraction s
+
+instance HasFresh NameId FreshThings where
+    nextFresh s = (i, s { fName = succ i })
+	where
+	    i = fName s
+
+instance HasFresh CtxId FreshThings where
+    nextFresh s = (i, s { fCtx = succ i })
+	where
+	    i = fCtx s
+
+instance HasFresh Int FreshThings where
+    nextFresh s = (i, s { fInt = succ i })
+	where
+	    i = fInt s
+
+newtype ProblemId = ProblemId Nat
+  deriving (Typeable, Eq, Ord, Enum, Real, Integral, Num)
+
+instance Show ProblemId where
+  show (ProblemId n) = show n
+
+instance HasFresh ProblemId FreshThings where
+  nextFresh s = (i, s { fProblem = succ i })
+    where i = fProblem s
+
+instance HasFresh i FreshThings => HasFresh i TCState where
+    nextFresh s = ((,) $! i) $! s { stFreshThings = f }
+	where
+	    (i, f) = nextFresh $ stFreshThings s
+
+---------------------------------------------------------------------------
+-- ** Interface
+---------------------------------------------------------------------------
+
+data ModuleInfo = ModuleInfo
+  { miInterface  :: Interface
+  , miWarnings   :: Bool
+    -- ^ 'True' if warnings were encountered when the module was type
+    -- checked.
+  , miTimeStamp  :: ClockTime
+    -- ^ The modification time stamp of the interface file when the
+    -- interface was read or written. Alternatively, if warnings were
+    -- encountered (in which case there may not be any up-to-date
+    -- interface file), the time at which the interface was produced
+    -- (approximately).
+  }
+
+-- Note that the use of 'C.TopLevelModuleName' here is a potential
+-- performance problem, because these names do not contain unique
+-- identifiers.
+
+type VisitedModules = Map C.TopLevelModuleName ModuleInfo
+type DecodedModules = Map C.TopLevelModuleName (Interface, ClockTime)
+
+data Interface = Interface
+	{ iImportedModules :: [ModuleName]
+        , iModuleName      :: ModuleName
+	, iScope	   :: Map ModuleName Scope
+        , iInsideScope     :: ScopeInfo
+	, iSignature	   :: Signature
+	, iBuiltin	   :: BuiltinThings (String, QName)
+        , iHaskellImports  :: Set String
+                              -- ^ Haskell imports listed in
+                              -- (transitively) imported modules are
+                              -- not included here.
+        , iHighlighting    :: HighlightingInfo
+        , iPragmaOptions   :: [OptionsPragma]
+                              -- ^ Pragma options set in the file.
+        , iPatternSyns     :: A.PatternSynDefns
+	}
+    deriving (Typeable, Show)
+
+---------------------------------------------------------------------------
+-- ** Closure
+---------------------------------------------------------------------------
+
+data Closure a = Closure { clSignature  :: Signature
+			 , clEnv	:: TCEnv
+			 , clScope	:: ScopeInfo
+			 , clValue	:: a
+			 }
+    deriving (Typeable)
+
+instance Show a => Show (Closure a) where
+  show cl = "Closure " ++ show (clValue cl)
+
+instance HasRange a => HasRange (Closure a) where
+    getRange = getRange . clValue
+
+buildClosure :: a -> TCM (Closure a)
+buildClosure x = do
+    env   <- ask
+    sig   <- gets stSignature
+    scope <- gets stScope
+    return $ Closure sig env scope x
+
+---------------------------------------------------------------------------
+-- ** Constraints
+---------------------------------------------------------------------------
+
+type Constraints = [ProblemConstraint]
+
+data ProblemConstraint = PConstr
+  { constraintProblem :: ProblemId
+  , theConstraint     :: Closure Constraint
+  }
+  deriving (Typeable, Show)
+
+data Constraint
+  = ValueCmp Comparison Type Term Term
+  | ElimCmp [Polarity] Type Term [Elim] [Elim]
+  | TypeCmp Comparison Type Type
+  | TelCmp Type Type Comparison Telescope Telescope -- ^ the two types are for the error message only
+  | SortCmp Comparison Sort Sort
+  | LevelCmp Comparison Level Level
+--  | ShortCut MetaId Term Type
+--    -- ^ A delayed instantiation.  Replaces @ValueCmp@ in 'postponeTypeCheckingProblem'.
+  | UnBlock MetaId
+  | Guarded Constraint ProblemId
+  | IsEmpty Range Type
+    -- ^ the range is the one of the absurd pattern
+  | FindInScope MetaId [(Term, Type)]
+  deriving (Typeable, Show)
+
+data Comparison = CmpEq | CmpLeq
+  deriving (Eq, Typeable)
+
+instance Show Comparison where
+  show CmpEq  = "="
+  show CmpLeq = "=<"
+
+---------------------------------------------------------------------------
+-- * Open things
+---------------------------------------------------------------------------
+
+-- | A thing tagged with the context it came from.
+data Open a = OpenThing [CtxId] a
+    deriving (Typeable, Show, Functor)
+
+---------------------------------------------------------------------------
+-- * Judgements
+--
+-- Used exclusively for typing of meta variables.
+---------------------------------------------------------------------------
+
+data Judgement t a
+	= HasType { jMetaId :: a, jMetaType :: t }
+	| IsSort  { jMetaId :: a, jMetaType :: t } -- Andreas, 2011-04-26: type needed for higher-order sort metas
+    deriving (Typeable, Functor, Foldable, Traversable)
+
+instance (Show t, Show a) => Show (Judgement t a) where
+    show (HasType a t) = show a ++ " : " ++ show t
+    show (IsSort  a t) = show a ++ " :sort " ++ show t
+
+---------------------------------------------------------------------------
+-- ** Meta variables
+---------------------------------------------------------------------------
+
+data MetaVariable =
+	MetaVar	{ mvInfo	  :: MetaInfo
+		, mvPriority	  :: MetaPriority -- ^ some metavariables are more eager to be instantiated
+                , mvPermutation   :: Permutation
+                  -- ^ a metavariable doesn't have to depend on all variables
+                  --   in the context, this "permutation" will throw away the
+                  --   ones it does not depend on
+		, mvJudgement	  :: Judgement Type MetaId
+		, mvInstantiation :: MetaInstantiation
+		, mvListeners	  :: Set Listener -- ^ meta variables scheduled for eta-expansion but blocked by this one
+                , mvFrozen        :: Frozen -- ^ are we past the point where we can instantiate this meta variable?
+		}
+    deriving (Typeable)
+
+data Listener = EtaExpand MetaId
+              | CheckConstraint Nat ProblemConstraint
+  deriving (Typeable)
+
+instance Eq Listener where
+  EtaExpand       x   == EtaExpand       y   = x == y
+  CheckConstraint x _ == CheckConstraint y _ = x == y
+  _ == _ = False
+
+instance Ord Listener where
+  EtaExpand       x   `compare` EtaExpand       y   = x `compare` y
+  CheckConstraint x _ `compare` CheckConstraint y _ = x `compare` y
+  EtaExpand{} `compare` CheckConstraint{} = LT
+  CheckConstraint{} `compare` EtaExpand{} = Prelude.GT
+
+-- | Frozen meta variable cannot be instantiated by unification.
+--   This serves to prevent the completion of a definition by its use
+--   outside of the current block.
+--   (See issues 118, 288, 399).
+data Frozen
+  = Frozen        -- ^ Do not instantiate.
+  | Instantiable
+    deriving (Eq, Show)
+
+data MetaInstantiation
+	= InstV Term         -- ^ solved by term
+	| InstS Term         -- ^ solved by @Lam .. Sort s@
+	| Open               -- ^ unsolved
+	| OpenIFS            -- ^ open, to be instantiated as "implicit from scope"
+	| BlockedConst Term  -- ^ solution blocked by unsolved constraints
+        | PostponedTypeCheckingProblem (Closure (A.Expr, Type, TCM Bool))
+    deriving (Typeable)
+
+instance Show MetaInstantiation where
+  show (InstV t) = "InstV (" ++ show t ++ ")"
+  show (InstS s) = "InstS (" ++ show s ++ ")"
+  show Open      = "Open"
+  show OpenIFS   = "OpenIFS"
+  show (BlockedConst t) = "BlockedConst (" ++ show t ++ ")"
+  show (PostponedTypeCheckingProblem{}) = "PostponedTypeCheckingProblem (...)"
+
+newtype MetaPriority = MetaPriority Int
+    deriving (Eq, Ord, Show)
+
+data RunMetaOccursCheck
+  = RunMetaOccursCheck
+  | DontRunMetaOccursCheck
+  deriving (Eq, Ord, Show)
+
+-- | @MetaInfo@ is cloned from one meta to the next during pruning.
+data MetaInfo = MetaInfo
+  { miClosRange       :: Closure Range -- TODO: Not so nice. But we want both to have the environment of the meta (Closure) and its range.
+--  , miRelevance       :: Relevance          -- ^ Created in irrelevant position?
+  , miMetaOccursCheck :: RunMetaOccursCheck -- ^ Run the extended occurs check that goes in definitions?
+  , miNameSuggestion  :: MetaNameSuggestion
+    -- ^ Used for printing.
+    --   @Just x@ if meta-variable comes from omitted argument with name @x@.
+  }
+
+-- | Name suggestion for meta variable.  Empty string means no suggestion.
+type MetaNameSuggestion = String
+
+-- | For printing, we couple a meta with its name suggestion.
+data NamedMeta = NamedMeta
+  { nmSuggestion :: MetaNameSuggestion
+  , nmid         :: MetaId
+  }
+
+instance Show NamedMeta where
+  show (NamedMeta "" x) = show x
+  show (NamedMeta s  x) = "_" ++ s ++ show x
+
+type MetaStore = Map MetaId MetaVariable
+
+instance HasRange MetaVariable where
+    getRange m = getRange $ getMetaInfo m
+
+instance SetRange MetaVariable where
+  setRange r m = m { mvInfo = (mvInfo m)
+                     { miClosRange = (miClosRange (mvInfo m))
+                       { clValue = r }}}
+
+normalMetaPriority :: MetaPriority
+normalMetaPriority = MetaPriority 0
+
+lowMetaPriority :: MetaPriority
+lowMetaPriority = MetaPriority (-10)
+
+highMetaPriority :: MetaPriority
+highMetaPriority = MetaPriority 10
+
+getMetaInfo :: MetaVariable -> Closure Range
+getMetaInfo = miClosRange . mvInfo
+
+getMetaScope :: MetaVariable -> ScopeInfo
+getMetaScope m = clScope $ getMetaInfo m
+
+getMetaEnv :: MetaVariable -> TCEnv
+getMetaEnv m = clEnv $ getMetaInfo m
+
+getMetaSig :: MetaVariable -> Signature
+getMetaSig m = clSignature $ getMetaInfo m
+
+getMetaRelevance :: MetaVariable -> Relevance
+getMetaRelevance = envRelevance . getMetaEnv
+
+---------------------------------------------------------------------------
+-- ** Interaction meta variables
+---------------------------------------------------------------------------
+
+type InteractionPoints = Map InteractionId MetaId
+
+newtype InteractionId = InteractionId Nat
+    deriving (Eq,Ord,Num,Integral,Real,Enum)
+
+instance Show InteractionId where
+    show (InteractionId x) = "?" ++ show x
+
+---------------------------------------------------------------------------
+-- ** Signature
+---------------------------------------------------------------------------
+
+data Signature = Sig
+      { sigSections    :: Sections
+      , sigDefinitions :: Definitions
+      }
+  deriving (Typeable, Show)
+
+type Sections	 = Map ModuleName Section
+type Definitions = HashMap QName Definition
+
+data Section = Section
+      { secTelescope :: Telescope
+      , secFreeVars  :: Nat	    -- ^ This is the number of parameters when
+				    --	 we're inside the section and 0
+				    --	 outside. It's used to know how much of
+				    --	 the context to apply function from the
+				    --	 section to when translating from
+				    --	 abstract to internal syntax.
+      }
+  deriving (Typeable, Show)
+
+emptySignature :: Signature
+emptySignature = Sig Map.empty HMap.empty
+
+data DisplayForm = Display Nat [Term] DisplayTerm
+		-- ^ The three arguments are:
+		--
+		--   * @n@: number of free variables;
+		--
+		--   * Patterns for arguments, one extra free var which
+		--     represents pattern vars. There should @n@ of them.
+		--
+		--   * Display form. @n@ free variables.
+  deriving (Typeable, Show)
+
+data DisplayTerm = DWithApp [DisplayTerm] Args
+                 | DCon QName [Arg DisplayTerm]
+                 | DDef QName [Arg DisplayTerm]
+                 | DDot Term
+		 | DTerm Term
+  deriving (Typeable, Show)
+
+defaultDisplayForm :: QName -> [Open DisplayForm]
+defaultDisplayForm c = []
+
+data Definition = Defn
+  { defRelevance      :: Relevance -- ^ Some defs can be irrelevant (but not hidden).
+  , defName           :: QName
+  , defType           :: Type	      -- ^ Type of the lifted definition.
+  , defPolarity       :: [Polarity]
+  , defArgOccurrences :: [Occurrence]
+  , defDisplay        :: [Open DisplayForm]
+  , defMutual         :: MutualId
+  , defCompiledRep    :: CompiledRepresentation
+  , theDef            :: Defn
+  }
+    deriving (Typeable, Show)
+
+type HaskellCode = String
+type HaskellType = String
+type EpicCode    = String
+type JSCode      = JS.Exp
+
+data HaskellRepresentation
+      = HsDefn HaskellType HaskellCode
+      | HsType HaskellType
+  deriving (Typeable, Show)
+
+-- | Polarity for equality and subtype checking.
+data Polarity
+  = Covariant      -- ^ monotone
+  | Contravariant  -- ^ antitone
+  | Invariant      -- ^ no information (mixed variance)
+  | Nonvariant     -- ^ constant
+  deriving (Typeable, Show, Eq)
+
+data CompiledRepresentation = CompiledRep
+  { compiledHaskell :: Maybe HaskellRepresentation
+  , compiledEpic    :: Maybe EpicCode
+  , compiledJS      :: Maybe JSCode
+  }
+  deriving (Typeable, Show)
+
+noCompiledRep :: CompiledRepresentation
+noCompiledRep = CompiledRep Nothing Nothing Nothing
+
+-- | Subterm occurrences for positivity checking.
+--   The constructors are listed in increasing information they provide:
+--   @Mixed <= JustPos <= StrictPos <= GuardPos <= Unused@
+--   @Mixed <= JustNeg <= Unused@.
+data Occurrence
+  = Mixed     -- ^ Arbitrary occurrence (positive and negative).
+  | JustNeg   -- ^ Negative occurrence.
+  | JustPos   -- ^ Positive occurrence, but not strictly positive.
+  | StrictPos -- ^ Strictly positive occurrence.
+  | GuardPos  -- ^ Guarded strictly positive occurrence (i.e., under ∞).  For checking recursive records.
+  | Unused    --  ^ No occurrence.
+  deriving (Typeable, Show, Eq, Ord)
+
+instance NFData Occurrence
+
+data Defn = Axiom
+	  | Function
+            { funClauses        :: [Clause]
+            , funCompiled       :: CompiledClauses
+            , funInv            :: FunctionInverse
+{- MOVED to Definition
+            , funPolarity       :: [Polarity]
+            , funArgOccurrences :: [Occurrence]
+-}
+            , funMutual         :: [QName]
+              -- ^ Mutually recursive functions, @data@s and @record@s.
+            , funAbstr          :: IsAbstract
+            , funDelayed        :: Delayed
+              -- ^ Are the clauses of this definition delayed?
+            , funProjection     :: Maybe (QName, Int)
+              -- ^ Is it a record projection?
+              --   If yes, then return the name of the record type and index of
+              --   the record argument.  Start counting with 1, because 0 means that
+              --   it is already applied to the record. (Can happen in module
+              --   instantiation.) This information is used in the termination
+              --   checker.
+            , funStatic         :: Bool
+              -- ^ Should calls to this function be normalised at compile-time?
+            , funCopy           :: Bool
+              -- ^ Has this function been created by a module
+                                   -- instantiation?
+            , funTerminates     :: Maybe Bool
+              -- ^ Has this function been termination checked?  Did it pass?
+            }
+	  | Datatype
+            { dataPars           :: Nat           -- nof parameters
+	    , dataIxs            :: Nat           -- nof indices
+            , dataInduction      :: Induction  -- data or codata?
+            , dataClause         :: (Maybe Clause) -- this might be in an instantiated module
+            , dataCons           :: [QName]        -- constructor names
+            , dataSort           :: Sort
+{- MOVED
+            , dataPolarity       :: [Polarity]
+            , dataArgOccurrences :: [Occurrence]
+-}
+            , dataMutual         :: [QName]        -- ^ Mutually recursive functions, @data@s and @record@s.
+            , dataAbstr          :: IsAbstract
+            }
+	  | Record
+            { recPars           :: Nat                  -- ^ Number of parameters.
+            , recClause         :: Maybe Clause
+            , recCon            :: QName                -- ^ Constructor name.
+            , recNamedCon       :: Bool
+            , recConType        :: Type                 -- ^ The record constructor's type.
+            , recFields         :: [Arg A.QName]
+            , recTel            :: Telescope            -- ^ The record field telescope
+{- MOVED
+            , recPolarity       :: [Polarity]
+            , recArgOccurrences :: [Occurrence]
+-}
+            , recMutual         :: [QName]              -- ^ Mutually recursive functions, @data@s and @record@s.
+            , recEtaEquality    :: Bool                 -- ^ Eta-expand at this record type.  @False@ for unguarded recursive records.
+            , recInduction      :: Induction            -- ^ 'Inductive' or 'Coinductive'?  Matters only for recursive records.
+            , recRecursive      :: Bool                 -- ^ Recursive record.  Implies @recEtaEquality = False@.  Projections are not size-preserving.
+            , recAbstr          :: IsAbstract
+            }
+	  | Constructor
+            { conPars   :: Nat         -- nof parameters
+	    , conSrcCon :: QName       -- original constructor (this might be in a module instance)
+	    , conData   :: QName       -- name of datatype or record type
+	    , conAbstr  :: IsAbstract
+            , conInd    :: Induction   -- ^ Inductive or coinductive?
+            }
+	  | Primitive
+            { primAbstr :: IsAbstract
+            , primName  :: String
+            , primClauses :: Maybe [Clause]
+              -- ^ 'Nothing' for primitive functions, @'Just'
+              -- something@ for builtin functions.
+            , primCompiled :: Maybe CompiledClauses
+              -- ^ 'Nothing' for primitive functions, @'Just'
+              -- something@ for builtin functions.
+            }
+            -- ^ Primitive or builtin functions.
+    deriving (Typeable, Show)
+
+defIsRecord :: Defn -> Bool
+defIsRecord Record{} = True
+defIsRecord _        = False
+
+defIsDataOrRecord :: Defn -> Bool
+defIsDataOrRecord Record{}   = True
+defIsDataOrRecord Datatype{} = True
+defIsDataOrRecord _          = False
+
+newtype Fields = Fields [(C.Name, Type)]
+  deriving (Typeable)
+
+data Reduced no yes = NoReduction no | YesReduction yes
+    deriving (Typeable, Functor)
+
+data IsReduced = NotReduced | Reduced (Blocked ())
+data MaybeReduced a = MaybeRed
+  { isReduced     :: IsReduced
+  , ignoreReduced :: a
+  }
+  deriving (Functor)
+
+type MaybeReducedArgs = [MaybeReduced (Arg Term)]
+
+notReduced :: a -> MaybeReduced a
+notReduced x = MaybeRed NotReduced x
+
+reduced :: Blocked (Arg Term) -> MaybeReduced (Arg Term)
+reduced b = case fmap ignoreSharing <$> b of
+  NotBlocked (Arg _ _ (MetaV x _)) -> MaybeRed (Reduced $ Blocked x ()) v
+  _                                -> MaybeRed (Reduced $ () <$ b)      v
+  where
+    v = ignoreBlocking b
+
+data PrimFun = PrimFun
+	{ primFunName		:: QName
+	, primFunArity		:: Arity
+	, primFunImplementation :: [Arg Term] -> TCM (Reduced MaybeReducedArgs Term)
+	}
+    deriving (Typeable)
+
+defClauses :: Definition -> [Clause]
+defClauses Defn{theDef = Function{funClauses = cs}}        = cs
+defClauses Defn{theDef = Primitive{primClauses = Just cs}} = cs
+defClauses Defn{theDef = Datatype{dataClause = Just c}}    = [c]
+defClauses Defn{theDef = Record{recClause = Just c}}       = [c]
+defClauses _                                               = []
+
+defCompiled :: Definition -> Maybe CompiledClauses
+defCompiled Defn{theDef = Function{funCompiled = cc}} = Just cc
+defCompiled Defn{theDef = Primitive{primCompiled = mcc}} = mcc
+defCompiled _ = Nothing
+
+defJSDef :: Definition -> Maybe JSCode
+defJSDef = compiledJS . defCompiledRep
+
+defEpicDef :: Definition -> Maybe EpicCode
+defEpicDef = compiledEpic . defCompiledRep
+
+-- | Are the clauses of this definition delayed?
+defDelayed :: Definition -> Delayed
+defDelayed Defn{theDef = Function{funDelayed = d}} = d
+defDelayed _                                       = NotDelayed
+
+-- | Is the definition just a copy created by a module instantiation?
+defCopy :: Definition -> Bool
+defCopy Defn{theDef = Function{funCopy = b}} = b
+defCopy _                                    = False
+
+defAbstract :: Definition -> IsAbstract
+defAbstract d = case theDef d of
+    Axiom{}                   -> ConcreteDef
+    Function{funAbstr = a}    -> a
+    Datatype{dataAbstr = a}   -> a
+    Record{recAbstr = a}      -> a
+    Constructor{conAbstr = a} -> a
+    Primitive{primAbstr = a}  -> a
+
+---------------------------------------------------------------------------
+-- ** Injectivity
+---------------------------------------------------------------------------
+
+type FunctionInverse = FunctionInverse' Clause
+
+data FunctionInverse' c
+  = NotInjective
+  | Inverse (Map TermHead c)
+  deriving (Typeable, Show, Functor)
+
+data TermHead = SortHead
+              | PiHead
+              | ConHead QName
+  deriving (Typeable, Eq, Ord, Show)
+
+---------------------------------------------------------------------------
+-- ** Mutual blocks
+---------------------------------------------------------------------------
+
+newtype MutualId = MutId Int32
+  deriving (Typeable, Eq, Ord, Show, Num)
+
+---------------------------------------------------------------------------
+-- ** Statistics
+---------------------------------------------------------------------------
+
+type Statistics = Map String Integer
+
+---------------------------------------------------------------------------
+-- ** Trace
+---------------------------------------------------------------------------
+
+data Call = CheckClause Type A.Clause (Maybe Clause)
+	  | forall a. CheckPattern A.Pattern Telescope Type (Maybe a)
+	  | CheckLetBinding A.LetBinding (Maybe ())
+	  | InferExpr A.Expr (Maybe (Term, Type))
+	  | CheckExpr A.Expr Type (Maybe Term)
+	  | CheckDotPattern A.Expr Term (Maybe Constraints)
+	  | CheckPatternShadowing A.Clause (Maybe ())
+	  | IsTypeCall A.Expr Sort (Maybe Type)
+	  | IsType_ A.Expr (Maybe Type)
+	  | InferVar Name (Maybe (Term, Type))
+	  | InferDef Range QName (Maybe (Term, Type))
+	  | CheckArguments Range [NamedArg A.Expr] Type Type (Maybe (Args, Type))
+	  | CheckDataDef Range Name [A.LamBinding] [A.Constructor] (Maybe ())
+	  | CheckRecDef Range Name [A.LamBinding] [A.Constructor] (Maybe ())
+	  | CheckConstructor QName Telescope Sort A.Constructor (Maybe ())
+	  | CheckFunDef Range Name [A.Clause] (Maybe ())
+	  | CheckPragma Range A.Pragma (Maybe ())
+	  | CheckPrimitive Range Name A.Expr (Maybe ())
+          | CheckIsEmpty Range Type (Maybe ())
+          | CheckWithFunctionType A.Expr (Maybe ())
+          | CheckSectionApplication Range ModuleName A.ModuleApplication (Maybe ())
+	  | ScopeCheckExpr C.Expr (Maybe A.Expr)
+	  | ScopeCheckDeclaration D.NiceDeclaration (Maybe [A.Declaration])
+	  | ScopeCheckLHS C.Name C.Pattern (Maybe A.LHS)
+          | forall a. NoHighlighting (Maybe a)
+	  | forall a. SetRange Range (Maybe a)	-- ^ used by 'setCurrentRange'
+    deriving (Typeable)
+
+instance HasRange Call where
+    getRange (CheckClause _ c _)                   = getRange c
+    getRange (CheckPattern p _ _ _)                = getRange p
+    getRange (InferExpr e _)                       = getRange e
+    getRange (CheckExpr e _ _)                     = getRange e
+    getRange (CheckLetBinding b _)                 = getRange b
+    getRange (IsTypeCall e s _)                    = getRange e
+    getRange (IsType_ e _)                         = getRange e
+    getRange (InferVar x _)                        = getRange x
+    getRange (InferDef _ f _)                      = getRange f
+    getRange (CheckArguments r _ _ _ _)            = r
+    getRange (CheckDataDef i _ _ _ _)              = getRange i
+    getRange (CheckRecDef i _ _ _ _)               = getRange i
+    getRange (CheckConstructor _ _ _ c _)          = getRange c
+    getRange (CheckFunDef i _ _ _)                 = getRange i
+    getRange (CheckPragma r _ _)                   = r
+    getRange (CheckPrimitive i _ _ _)              = getRange i
+    getRange CheckWithFunctionType{}               = noRange
+    getRange (ScopeCheckExpr e _)                  = getRange e
+    getRange (ScopeCheckDeclaration d _)           = getRange d
+    getRange (ScopeCheckLHS _ p _)                 = getRange p
+    getRange (CheckDotPattern e _ _)               = getRange e
+    getRange (CheckPatternShadowing c _)           = getRange c
+    getRange (SetRange r _)                        = r
+    getRange (CheckSectionApplication r _ _ _)     = r
+    getRange (CheckIsEmpty r _ _)                  = r
+    getRange (NoHighlighting _)                    = noRange
+
+---------------------------------------------------------------------------
+-- ** Builtin things
+---------------------------------------------------------------------------
+
+data BuiltinDescriptor = BuiltinData (TCM Type) [String]
+                       | BuiltinDataCons (TCM Type)
+                       | BuiltinPrim String (Term -> TCM ())
+                       | BuiltinPostulate Relevance (TCM Type)
+                       | BuiltinUnknown (Maybe (TCM Type)) (Term -> TCM ())
+
+data BuiltinInfo =
+   BuiltinInfo { builtinName :: String
+               , builtinDesc :: BuiltinDescriptor }
+
+type BuiltinThings pf = Map String (Builtin pf)
+
+data Builtin pf
+	= Builtin Term
+	| Prim pf
+    deriving (Typeable, Show, Functor, Foldable, Traversable)
+
+---------------------------------------------------------------------------
+-- * Highlighting levels
+---------------------------------------------------------------------------
+
+-- | How much highlighting should be sent to the user interface?
+
+data HighlightingLevel
+  = None
+  | NonInteractive
+  | Interactive
+    -- ^ This includes both non-interactive highlighting and
+    -- interactive highlighting of the expression that is currently
+    -- being type-checked.
+    deriving (Eq, Ord, Show, Read)
+
+-- | How should highlighting be sent to the user interface?
+
+data HighlightingMethod
+  = Direct
+    -- ^ Via stdout.
+  | Indirect
+    -- ^ Both via files and via stdout.
+    deriving (Eq, Show, Read)
+
+-- | @ifTopLevelAndHighlightingLevelIs l m@ runs @m@ when we're
+-- type-checking the top-level module and the highlighting level is
+-- /at least/ @l@.
+
+ifTopLevelAndHighlightingLevelIs ::
+  MonadTCM tcm => HighlightingLevel -> tcm () -> tcm ()
+ifTopLevelAndHighlightingLevelIs l m = do
+  e <- ask
+  when (envModuleNestingLevel e == 0 &&
+        envHighlightingLevel e >= l)
+       m
+
+---------------------------------------------------------------------------
+-- * Type checking environment
+---------------------------------------------------------------------------
+
+data TCEnv =
+    TCEnv { envContext             :: Context
+	  , envLetBindings         :: LetBindings
+	  , envCurrentModule       :: ModuleName
+	  , envCurrentPath         :: AbsolutePath
+            -- ^ The path to the file that is currently being
+            -- type-checked.
+          , envAnonymousModules    :: [(ModuleName, Nat)] -- ^ anonymous modules and their number of free variables
+	  , envImportPath          :: [C.TopLevelModuleName] -- ^ to detect import cycles
+	  , envMutualBlock         :: Maybe MutualId -- ^ the current (if any) mutual block
+          , envSolvingConstraints  :: Bool
+                -- ^ Are we currently in the process of solving active constraints?
+          , envAssignMetas         :: Bool
+            -- ^ Are we allowed to assign metas?
+          , envActiveProblems      :: [ProblemId]
+	  , envAbstractMode        :: AbstractMode
+		-- ^ When checking the typesignature of a public definition
+		--   or the body of a non-abstract definition this is true.
+		--   To prevent information about abstract things leaking
+		--   outside the module.
+          , envRelevance           :: Relevance
+                -- ^ Are we checking an irrelevant argument? (=@Irrelevant@)
+                -- Then top-level irrelevant declarations are enabled.
+                -- Other value: @Relevant@, then only relevant decls. are avail.
+          , envDisplayFormsEnabled :: Bool
+                -- ^ Sometimes we want to disable display forms.
+          , envReifyInteractionPoints :: Bool
+                -- ^ should we try to recover interaction points when reifying?
+                --   disabled when generating types for with functions
+          , envEtaContractImplicit :: Bool
+                -- ^ it's safe to eta contract implicit lambdas as long as we're
+                --   not going to reify and retypecheck (like when doing with
+                --   abstraction)
+          , envRange :: Range
+          , envHighlightingRange :: Range
+                -- ^ Interactive highlighting uses this range rather
+                --   than 'envRange'.
+          , envCall  :: Maybe (Closure Call)
+                -- ^ what we're doing at the moment
+          , envEmacs :: Bool
+                -- ^ True when called from the Emacs mode.
+          , envHighlightingLevel  :: HighlightingLevel
+                -- ^ Set to 'None' when imported modules are
+                --   type-checked.
+          , envHighlightingMethod :: HighlightingMethod
+          , envModuleNestingLevel :: Integer
+                -- ^ This number indicates how far away from the
+                --   top-level module Agda has come when chasing
+                --   modules. The level of a given module is not
+                --   necessarily the same as the length, in the module
+                --   dependency graph, of the shortest path from the
+                --   top-level module; it depends on in which order
+                --   Agda chooses to chase dependencies.
+          , envAllowDestructiveUpdate :: Bool
+                -- ^ When True, allows destructively shared updating terms
+                --   during evaluation or unification. This is disabled when
+                --   doing speculative checking, like solve instance metas, or
+                --   when updating might break abstraction, as is the case when
+                --   checking abstract definitions.
+	  }
+    deriving (Typeable)
+
+initEnv :: TCEnv
+initEnv = TCEnv { envContext	         = []
+		, envLetBindings         = Map.empty
+		, envCurrentModule       = noModuleName
+	        , envCurrentPath         = __IMPOSSIBLE__
+                , envAnonymousModules    = []
+		, envImportPath          = []
+		, envMutualBlock         = Nothing
+                , envSolvingConstraints  = False
+                , envActiveProblems      = [0]
+                , envAssignMetas         = True
+		, envAbstractMode        = AbstractMode
+                , envRelevance           = Relevant
+                , envDisplayFormsEnabled = True
+                , envReifyInteractionPoints = True
+                , envEtaContractImplicit    = True
+                , envRange                  = noRange
+                , envHighlightingRange      = noRange
+                , envCall                   = Nothing
+                , envEmacs                  = False
+                , envHighlightingLevel      = None
+                , envHighlightingMethod     = Indirect
+                , envModuleNestingLevel     = -1
+                , envAllowDestructiveUpdate = True
+		}
+
+---------------------------------------------------------------------------
+-- ** Context
+---------------------------------------------------------------------------
+
+-- | The @Context@ is a stack of 'ContextEntry's.
+type Context	  = [ContextEntry]
+data ContextEntry = Ctx { ctxId	   :: CtxId
+			, ctxEntry :: Dom (Name, Type)
+			}
+  deriving (Typeable)
+
+newtype CtxId	  = CtxId Nat
+  deriving (Typeable, Eq, Ord, Show, Enum, Real, Integral, Num)
+
+---------------------------------------------------------------------------
+-- ** Let bindings
+---------------------------------------------------------------------------
+
+type LetBindings = Map Name (Open (Term, Dom Type))
+
+---------------------------------------------------------------------------
+-- ** Abstract mode
+---------------------------------------------------------------------------
+
+data AbstractMode = AbstractMode       -- ^ abstract things in the current module can be accessed
+		  | ConcreteMode       -- ^ no abstract things can be accessed
+		  | IgnoreAbstractMode -- ^ all abstract things can be accessed
+  deriving (Typeable)
+
+---------------------------------------------------------------------------
+-- ** Insertion of implicit arguments
+---------------------------------------------------------------------------
+
+data ExpandHidden
+  = ExpandLast      -- ^ Add implicit arguments in the end until type is no longer hidden 'Pi'.
+  | DontExpandLast  -- ^ Do not append implicit arguments.
+
+data ExpandInstances
+  = ExpandInstanceArguments
+  | DontExpandInstanceArguments
+    deriving (Eq)
+
+---------------------------------------------------------------------------
+-- * Type checking errors
+---------------------------------------------------------------------------
+
+-- Occurence of a name in a datatype definition
+data Occ = OccCon { occDatatype	:: QName
+	          , occConstructor :: QName
+	          , occPosition	:: OccPos
+	          }
+         | OccClause { occFunction :: QName
+                     , occClause   :: Int
+                     , occPosition :: OccPos
+                     }
+  deriving (Show)
+
+data OccPos = NonPositively | ArgumentTo Nat QName
+  deriving (Show)
+
+-- | Information about a call.
+
+data CallInfo = CallInfo
+  { callInfoRange :: Range
+    -- ^ Range of the head identifier.
+  , callInfoCall :: String
+    -- ^ Formatted representation of the call.
+    --
+    -- ('Doc' would perhaps be better here, but 'Doc' doesn't come
+    -- with an 'Ord' instance.)
+  } deriving (Eq, Ord, Typeable, Show)
+
+-- | Information about a mutual block which did not pass the
+-- termination checker.
+
+data TerminationError = TerminationError
+  { termErrFunctions :: [QName]
+    -- ^ The functions which failed to check. (May not include
+    -- automatically generated functions.)
+  , termErrCalls :: [CallInfo]
+    -- ^ The problematic call sites.
+  } deriving (Typeable, Show, Eq)
+
+{-
+-- | We consider two 'TerminationError's equal if they report the same
+--   invalid calls.
+instance Eq TerminationError where
+  (==) = (==) `on` termErrCalls
+-}
+
+data TypeError
+	= InternalError String
+	| NotImplemented String
+	| NotSupported String
+        | CompilationError String
+	| TerminationCheckFailed [TerminationError]
+	| PropMustBeSingleton
+	| DataMustEndInSort Term
+{- UNUSED
+        | DataTooManyParameters
+            -- ^ In @data D xs where@ the number of parameters @xs@ does not fit the
+            --   the parameters given in the forward declaraion @data D Gamma : T@.
+-}
+	| ShouldEndInApplicationOfTheDatatype Type
+	    -- ^ The target of a constructor isn't an application of its
+	    -- datatype. The 'Type' records what it does target.
+	| ShouldBeAppliedToTheDatatypeParameters Term Term
+	    -- ^ The target of a constructor isn't its datatype applied to
+	    --	 something that isn't the parameters. First term is the correct
+	    --	 target and the second term is the actual target.
+	| ShouldBeApplicationOf Type QName
+	    -- ^ Expected a type to be an application of a particular datatype.
+	| ConstructorPatternInWrongDatatype QName QName -- ^ constructor, datatype
+        | IndicesNotConstructorApplications [Arg Term] -- ^ Indices.
+        | IndexVariablesNotDistinct [Nat] [Arg Term] -- ^ Variables, indices.
+        | IndicesFreeInParameters [Nat] [Arg Term] [Arg Term]
+          -- ^ Indices (variables), index expressions (with
+          -- constructors applied to reconstructed parameters),
+          -- parameters.
+        | DoesNotConstructAnElementOf QName Term -- ^ constructor, type
+	| DifferentArities
+	    -- ^ Varying number of arguments for a function.
+	| WrongHidingInLHS Type
+	    -- ^ The left hand side of a function definition has a hidden argument
+	    --	 where a non-hidden was expected.
+	| WrongHidingInLambda Type
+	    -- ^ Expected a non-hidden function and found a hidden lambda.
+	| WrongHidingInApplication Type
+	    -- ^ A function is applied to a hidden argument where a non-hidden was expected.
+	| WrongIrrelevanceInLambda Type
+	    -- ^ Expected a relevant function and found an irrelevant lambda.
+	| NotInductive Term
+          -- ^ The term does not correspond to an inductive data type.
+	| UninstantiatedDotPattern A.Expr
+	| IlltypedPattern A.Pattern Type
+	| TooManyArgumentsInLHS Type
+	| WrongNumberOfConstructorArguments QName Nat Nat
+	| ShouldBeEmpty Type [Pattern]
+	| ShouldBeASort Type
+	    -- ^ The given type should have been a sort.
+	| ShouldBePi Type
+	    -- ^ The given type should have been a pi.
+	| ShouldBeRecordType Type
+	| ShouldBeRecordPattern Pattern
+	| NotAProperTerm
+        | SetOmegaNotValidType
+        | SplitOnIrrelevant A.Pattern (Dom Type)
+        | DefinitionIsIrrelevant QName
+        | VariableIsIrrelevant Name
+        | UnequalLevel Comparison Term Term
+	| UnequalTerms Comparison Term Term Type
+	| UnequalTypes Comparison Type Type
+	| UnequalTelescopes Comparison Telescope Telescope
+	| UnequalRelevance Comparison Term Term
+	    -- ^ The two function types have different relevance.
+	| UnequalHiding Term Term
+	    -- ^ The two function types have different hiding.
+	| UnequalSorts Sort Sort
+        | UnequalBecauseOfUniverseConflict Comparison Term Term
+        | HeterogeneousEquality Term Type Term Type
+            -- ^ We ended up with an equality constraint where the terms
+            --   have different types.  This is not supported.
+	| NotLeqSort Sort Sort
+	| MetaCannotDependOn MetaId [Nat] Nat
+	    -- ^ The arguments are the meta variable, the parameters it can
+	    --	 depend on and the paratemeter that it wants to depend on.
+	| MetaOccursInItself MetaId
+	| GenericError String
+	| GenericDocError Doc
+        | BuiltinMustBeConstructor String A.Expr
+	| NoSuchBuiltinName String
+	| DuplicateBuiltinBinding String Term Term
+	| NoBindingForBuiltin String
+	| NoSuchPrimitiveFunction String
+        | ShadowedModule C.Name [A.ModuleName]
+	| BuiltinInParameterisedModule String
+	| NoRHSRequiresAbsurdPattern [NamedArg A.Pattern]
+	| AbsurdPatternRequiresNoRHS [NamedArg A.Pattern]
+	| TooFewFields QName [C.Name]
+	| TooManyFields QName [C.Name]
+	| DuplicateFields [C.Name]
+	| DuplicateConstructors [C.Name]
+	| UnexpectedWithPatterns [A.Pattern]
+	| WithClausePatternMismatch A.Pattern Pattern
+        | FieldOutsideRecord
+        | ModuleArityMismatch A.ModuleName Telescope [NamedArg A.Expr]
+    -- Coverage errors
+	| IncompletePatternMatching Term Args -- can only happen if coverage checking is switched off
+        | CoverageFailure QName [[Arg Pattern]]
+        | UnreachableClauses QName [[Arg Pattern]]
+        | CoverageCantSplitOn QName Telescope Args Args
+        | CoverageCantSplitIrrelevantType Type
+        | CoverageCantSplitType Type
+    -- Positivity errors
+	| NotStrictlyPositive QName [Occ]
+    -- Import errors
+	| LocalVsImportedModuleClash ModuleName
+	| UnsolvedMetas [Range]
+	| UnsolvedConstraints Constraints
+	| CyclicModuleDependency [C.TopLevelModuleName]
+	| FileNotFound C.TopLevelModuleName [AbsolutePath]
+        | OverlappingProjects AbsolutePath C.TopLevelModuleName C.TopLevelModuleName
+        | AmbiguousTopLevelModuleName C.TopLevelModuleName [AbsolutePath]
+	| ModuleNameDoesntMatchFileName C.TopLevelModuleName [AbsolutePath]
+	| ClashingFileNamesFor ModuleName [AbsolutePath]
+        | ModuleDefinedInOtherFile C.TopLevelModuleName AbsolutePath AbsolutePath
+          -- ^ Module name, file from which it was loaded, file which
+          -- the include path says contains the module.
+    -- Scope errors
+	| BothWithAndRHS
+	| NotInScope [C.QName]
+	| NoSuchModule C.QName
+	| AmbiguousName C.QName [A.QName]
+	| AmbiguousModule C.QName [A.ModuleName]
+	| UninstantiatedModule C.QName
+	| ClashingDefinition C.QName A.QName
+	| ClashingModule A.ModuleName A.ModuleName
+	| ClashingImport C.Name A.QName
+	| ClashingModuleImport C.Name A.ModuleName
+	| PatternShadowsConstructor A.Name A.QName
+	| ModuleDoesntExport C.QName [C.ImportedName]
+        | DuplicateImports C.QName [C.ImportedName]
+	| InvalidPattern C.Pattern
+	| RepeatedVariablesInPattern [C.Name]
+    -- Concrete to Abstract errors
+	| NotAModuleExpr C.Expr
+	    -- ^ The expr was used in the right hand side of an implicit module
+	    --	 definition, but it wasn't of the form @m Delta@.
+	| NotAnExpression C.Expr
+	| NotAValidLetBinding D.NiceDeclaration
+	| NothingAppliedToHiddenArg C.Expr
+	| NothingAppliedToInstanceArg C.Expr
+        | UnusedVariableInPatternSynonym
+        | PatternSynonymArityMismatch A.QName
+    -- Operator errors
+	| NoParseForApplication [C.Expr]
+	| AmbiguousParseForApplication [C.Expr] [C.Expr]
+	| NoParseForLHS LHSOrPatSyn C.Pattern
+	| AmbiguousParseForLHS LHSOrPatSyn C.Pattern [C.Pattern]
+{- UNUSED
+	| NoParseForPatternSynonym C.Pattern
+	| AmbiguousParseForPatternSynonym C.Pattern [C.Pattern]
+-}
+    -- Usage errors
+    -- Implicit From Scope errors
+        | IFSNoCandidateInScope Type
+    -- Safe flag errors
+        | SafeFlagPostulate C.Name
+        | SafeFlagPragma [String]
+        | SafeFlagNoTerminationCheck
+        | SafeFlagPrimTrustMe
+    -- Language option errors
+        | NeedOptionCopatterns
+          deriving (Typeable, Show)
+
+-- | Distinguish error message when parsing lhs or pattern synonym, resp.
+data LHSOrPatSyn = IsLHS | IsPatSyn deriving (Eq, Show)
+
+-- instance Show TypeError where
+--   show _ = "<TypeError>" -- TODO: more info?
+
+instance Error TypeError where
+    noMsg  = strMsg ""
+    strMsg = GenericError
+
+-- | Type-checking errors.
+
+data TCErr = TypeError TCState (Closure TypeError)
+	   | Exception Range String
+           | IOException Range E.IOException
+	   | PatternErr  TCState -- ^ for pattern violations
+	   {- AbortAssign TCState -- ^ used to abort assignment to meta when there are instantiations -- UNUSED -}
+  deriving (Typeable)
+
+instance Error TCErr where
+    noMsg  = strMsg ""
+    strMsg = Exception noRange . strMsg
+
+instance Show TCErr where
+    show (TypeError _ e) = show (envRange $ clEnv e) ++ ": " ++ show (clValue e)
+    show (Exception r s) = show r ++ ": " ++ s
+    show (IOException r e) = show r ++ ": " ++ show e
+    show (PatternErr _)  = "Pattern violation (you shouldn't see this)"
+    {- show (AbortAssign _) = "Abort assignment (you shouldn't see this)" -- UNUSED -}
+
+instance HasRange TCErr where
+    getRange (TypeError _ cl)  = envRange $ clEnv cl
+    getRange (Exception r _)   = r
+    getRange (IOException r _) = r
+    getRange (PatternErr s)    = noRange
+    {- getRange (AbortAssign s)   = noRange -- UNUSED -}
+
+instance Exception TCErr
+
+---------------------------------------------------------------------------
+-- * Type checking monad transformer
+---------------------------------------------------------------------------
+
+newtype TCMT m a = TCM { unTCM :: IORef TCState -> TCEnv -> m a }
+
+instance MonadIO m => MonadReader TCEnv (TCMT m) where
+  ask = TCM $ \s e -> return e
+  local f (TCM m) = TCM $ \s e -> m s (f e)
+
+instance MonadIO m => MonadState TCState (TCMT m) where
+  get   = TCM $ \s _ -> liftIO (readIORef s)
+  put s = TCM $ \r _ -> liftIO (writeIORef r s)
+
+type TCM = TCMT IO
+
+class ( Applicative tcm, MonadIO tcm
+      , MonadReader TCEnv tcm
+      , MonadState TCState tcm
+      ) => MonadTCM tcm where
+    liftTCM :: TCM a -> tcm a
+
+instance MonadError TCErr (TCMT IO) where
+  throwError = liftIO . throwIO
+  catchError m h = TCM $ \r e -> do
+    oldState <- liftIO (readIORef r)
+    unTCM m r e `E.catch` \err -> do
+      -- Reset the state, but do not forget changes to the persistent
+      -- component.
+      liftIO $ do
+        newState <- readIORef r
+        writeIORef r $ oldState { stPersistent = stPersistent newState }
+      unTCM (h err) r e
+
+-- | Preserve the state of the failing computation.
+catchError_ :: TCM a -> (TCErr -> TCM a) -> TCM a
+catchError_ m h = TCM $ \r e ->
+  unTCM m r e
+  `E.catch` \err -> unTCM (h err) r e
+
+{-# SPECIALIZE INLINE mapTCMT :: (forall a. IO a -> IO a) -> TCM a -> TCM a #-}
+mapTCMT :: (forall a. m a -> n a) -> TCMT m a -> TCMT n a
+mapTCMT f (TCM m) = TCM $ \s e -> f (m s e)
+
+pureTCM :: MonadIO m => (TCState -> TCEnv -> a) -> TCMT m a
+pureTCM f = TCM $ \r e -> do
+  s <- liftIO $ readIORef r
+  return (f s e)
+
+{-# RULES "liftTCM/id" liftTCM = id #-}
+instance MonadIO m => MonadTCM (TCMT m) where
+    liftTCM = mapTCMT liftIO
+
+instance (Error err, MonadTCM tcm) => MonadTCM (ErrorT err tcm) where
+  liftTCM = lift . liftTCM
+
+instance MonadTrans TCMT where
+    lift m = TCM $ \_ _ -> m
+
+-- We want a special monad implementation of fail.
+instance MonadIO m => Monad (TCMT m) where
+    return = returnTCMT
+    (>>=)  = bindTCMT
+    (>>)   = thenTCMT
+    fail   = internalError
+
+-- One goal of the definitions and pragmas below is to inline the
+-- monad operations as much as possible. This doesn't seem to have a
+-- large effect on the performance of the normal executable, but (at
+-- least on one machine/configuration) it has a massive effect on the
+-- performance of the profiling executable [1], and reduces the time
+-- attributed to bind from over 90% to about 25%.
+--
+-- [1] When compiled with -auto-all and run with -p: roughly 750%
+-- faster for one example.
+
+returnTCMT :: MonadIO m => a -> TCMT m a
+returnTCMT = \x -> TCM $ \_ _ -> return x
+{-# RULES "returnTCMT"
+      returnTCMT = \x -> TCM $ \_ _ -> return x
+  #-}
+{-# INLINE returnTCMT #-}
+{-# SPECIALIZE INLINE returnTCMT :: a -> TCM a #-}
+
+bindTCMT :: MonadIO m => TCMT m a -> (a -> TCMT m b) -> TCMT m b
+bindTCMT = \(TCM m) k -> TCM $ \r e -> m r e >>= \x -> unTCM (k x) r e
+{-# RULES "bindTCMT"
+      bindTCMT = \(TCM m) k -> TCM $ \r e ->
+                   m r e >>= \x -> unTCM (k x) r e
+  #-}
+{-# INLINE bindTCMT #-}
+{-# SPECIALIZE INLINE bindTCMT :: TCM a -> (a -> TCM b) -> TCM b #-}
+
+thenTCMT :: MonadIO m => TCMT m a -> TCMT m b -> TCMT m b
+thenTCMT = \(TCM m1) (TCM m2) -> TCM $ \r e -> m1 r e >> m2 r e
+{-# RULES "thenTCMT"
+      thenTCMT = \(TCM m1) (TCM m2) -> TCM $ \r e -> m1 r e >> m2 r e
+  #-}
+{-# INLINE thenTCMT #-}
+{-# SPECIALIZE INLINE thenTCMT :: TCM a -> TCM b -> TCM b #-}
+
+instance MonadIO m => Functor (TCMT m) where
+    fmap = fmapTCMT
+
+fmapTCMT :: MonadIO m => (a -> b) -> TCMT m a -> TCMT m b
+fmapTCMT = \f (TCM m) -> TCM $ \r e -> liftM f (m r e)
+{-# RULES "fmapTCMT"
+      fmapTCMT = \f (TCM m) -> TCM $ \r e -> liftM f (m r e)
+  #-}
+{-# INLINE fmapTCMT #-}
+{-# SPECIALIZE INLINE fmapTCMT :: (a -> b) -> TCM a -> TCM b #-}
+
+instance MonadIO m => Applicative (TCMT m) where
+    pure  = returnTCMT
+    (<*>) = apTCMT
+
+apTCMT :: MonadIO m => TCMT m (a -> b) -> TCMT m a -> TCMT m b
+apTCMT = \(TCM mf) (TCM m) -> TCM $ \r e -> ap (mf r e) (m r e)
+{-# RULES "apTCMT"
+      apTCMT = \(TCM mf) (TCM m) -> TCM $ \r e -> ap (mf r e) (m r e)
+  #-}
+{-# INLINE apTCMT #-}
+{-# SPECIALIZE INLINE apTCMT :: TCM (a -> b) -> TCM a -> TCM b #-}
+
+instance MonadIO m => MonadIO (TCMT m) where
+  liftIO m = TCM $ \s e ->
+              do let r = envRange e
+                 liftIO $ wrap r $ do
+                 x <- m
+                 x `seq` return x
+    where
+      wrap r m = failOnException handleException
+               $ E.catch m (handleIOException r)
+
+      handleIOException r e = throwIO $ IOException r e
+      handleException   r s = throwIO $ Exception r s
+
+patternViolation :: TCM a
+patternViolation = do
+    s <- get
+    throwError $ PatternErr s
+
+internalError :: MonadTCM tcm => String -> tcm a
+internalError s = typeError $ InternalError s
+
+typeError :: MonadTCM tcm => TypeError -> tcm a
+typeError err = liftTCM $ do
+    cl <- buildClosure err
+    s  <- get
+    throwError $ TypeError s cl
+
+-- | Running the type checking monad
+runTCM :: TCMT IO a -> IO (Either TCErr a)
+runTCM m = (Right <$> runTCM' m) `E.catch` (return . Left)
+
+runTCM' :: MonadIO m => TCMT m a -> m a
+runTCM' m = do
+  r <- liftIO $ newIORef initState
+  unTCM m r initEnv
+
+-- | Runs the given computation in a separate thread, with /a copy/ of
+-- the current state and environment.
+--
+-- Note that Agda sometimes uses actual, mutable state. If the
+-- computation given to @forkTCM@ tries to /modify/ this state, then
+-- bad things can happen, because accesses are not mutually exclusive.
+-- The @forkTCM@ function has been added mainly to allow the thread to
+-- /read/ (a snapshot of) the current state in a convenient way.
+--
+-- Note also that exceptions which are raised in the thread are not
+-- propagated to the parent, so the thread should not do anything
+-- important.
+
+forkTCM :: TCM a -> TCM ()
+forkTCM m = do
+  s <- get
+  e <- ask
+  liftIO $ C.forkIO $ do
+    runTCM $ local (\_ -> e) $ do
+      put s
+      m
+    return ()
+  return ()
+
+
+
+-- | Base name for extended lambda patterns
+extendlambdaname = ".extendedlambda"
+</code></pre></div>
+
+<div class="code"><pre class="language-haskell"><code>
+{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE CPP
+           , ForeignFunctionInterface
+           , MagicHash
+           , UnboxedTuples
+           , ScopedTypeVariables
+  #-}
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
+{-# OPTIONS_GHC -fno-warn-deprecations #-}
+-- kludge for the Control.Concurrent.QSem, Control.Concurrent.QSemN
+-- and Control.Concurrent.SampleVar imports.
+
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Control.Concurrent
+-- Copyright   :  (c) The University of Glasgow 2001
+-- License     :  BSD-style (see the file libraries/base/LICENSE)
+-- 
+-- Maintainer  :  libraries@haskell.org
+-- Stability   :  experimental
+-- Portability :  non-portable (concurrency)
+--
+-- A common interface to a collection of useful concurrency
+-- abstractions.
+--
+-----------------------------------------------------------------------------
+
+module Control.Concurrent (
+        -- * Concurrent Haskell
+
+        -- $conc_intro
+
+        -- * Basic concurrency operations
+
+        ThreadId,
+#ifdef __GLASGOW_HASKELL__
+        myThreadId,
+#endif
+
+        forkIO,
+#ifdef __GLASGOW_HASKELL__
+        forkFinally,
+        forkIOWithUnmask,
+        killThread,
+        throwTo,
+#endif
+
+        -- ** Threads with affinity
+        forkOn,
+        forkOnWithUnmask,
+        getNumCapabilities,
+        setNumCapabilities,
+        threadCapability,
+
+        -- * Scheduling
+
+        -- $conc_scheduling     
+        yield,                  -- :: IO ()
+
+        -- ** Blocking
+
+        -- $blocking
+
+#ifdef __GLASGOW_HASKELL__
+        -- ** Waiting
+        threadDelay,            -- :: Int -> IO ()
+        threadWaitRead,         -- :: Int -> IO ()
+        threadWaitWrite,        -- :: Int -> IO ()
+#endif
+
+        -- * Communication abstractions
+
+        module Control.Concurrent.MVar,
+        module Control.Concurrent.Chan,
+        module Control.Concurrent.QSem,
+        module Control.Concurrent.QSemN,
+        module Control.Concurrent.SampleVar,
+
+        -- * Merging of streams
+#ifndef __HUGS__
+        mergeIO,                -- :: [a]   -> [a] -> IO [a]
+        nmergeIO,               -- :: [[a]] -> IO [a]
+#endif
+        -- $merge
+
+#ifdef __GLASGOW_HASKELL__
+        -- * Bound Threads
+        -- $boundthreads
+        rtsSupportsBoundThreads,
+        forkOS,
+        isCurrentThreadBound,
+        runInBoundThread,
+        runInUnboundThread,
+#endif
+
+        -- * Weak references to ThreadIds
+        mkWeakThreadId,
+
+        -- * GHC's implementation of concurrency
+
+        -- |This section describes features specific to GHC's
+        -- implementation of Concurrent Haskell.
+
+        -- ** Haskell threads and Operating System threads
+
+        -- $osthreads
+
+        -- ** Terminating the program
+
+        -- $termination
+
+        -- ** Pre-emption
+
+        -- $preemption
+
+        -- * Deprecated functions
+        forkIOUnmasked
+
+    ) where
+
+import Prelude
+
+import Control.Exception.Base as Exception
+
+#ifdef __GLASGOW_HASKELL__
+import GHC.Exception
+import GHC.Conc hiding (threadWaitRead, threadWaitWrite)
+import qualified GHC.Conc
+import GHC.IO           ( IO(..), unsafeInterleaveIO, unsafeUnmask )
+import GHC.IORef        ( newIORef, readIORef, writeIORef )
+import GHC.Base
+
+import System.Posix.Types ( Fd )
+import Foreign.StablePtr
+import Foreign.C.Types
+import Control.Monad    ( when )
+
+#ifdef mingw32_HOST_OS
+import Foreign.C
+import System.IO
+#endif
+#endif
+
+#ifdef __HUGS__
+import Hugs.ConcBase
+#endif
+
+import Control.Concurrent.MVar
+import Control.Concurrent.Chan
+import Control.Concurrent.QSem
+import Control.Concurrent.QSemN
+import Control.Concurrent.SampleVar
+
+#ifdef __HUGS__
+type ThreadId = ()
+#endif
+
+{- $conc_intro
+
+The concurrency extension for Haskell is described in the paper
+/Concurrent Haskell/
+<http://www.haskell.org/ghc/docs/papers/concurrent-haskell.ps.gz>.
+
+Concurrency is \"lightweight\", which means that both thread creation
+and context switching overheads are extremely low.  Scheduling of
+Haskell threads is done internally in the Haskell runtime system, and
+doesn't make use of any operating system-supplied thread packages.
+
+However, if you want to interact with a foreign library that expects your
+program to use the operating system-supplied thread package, you can do so
+by using 'forkOS' instead of 'forkIO'.
+
+Haskell threads can communicate via 'MVar's, a kind of synchronised
+mutable variable (see "Control.Concurrent.MVar").  Several common
+concurrency abstractions can be built from 'MVar's, and these are
+provided by the "Control.Concurrent" library.
+In GHC, threads may also communicate via exceptions.
+-}
+
+{- $conc_scheduling
+
+    Scheduling may be either pre-emptive or co-operative,
+    depending on the implementation of Concurrent Haskell (see below
+    for information related to specific compilers).  In a co-operative
+    system, context switches only occur when you use one of the
+    primitives defined in this module.  This means that programs such
+    as:
+
+
+>   main = forkIO (write 'a') >> write 'b'
+>     where write c = putChar c >> write c
+
+    will print either @aaaaaaaaaaaaaa...@ or @bbbbbbbbbbbb...@,
+    instead of some random interleaving of @a@s and @b@s.  In
+    practice, cooperative multitasking is sufficient for writing
+    simple graphical user interfaces.  
+-}
+
+{- $blocking
+Different Haskell implementations have different characteristics with
+regard to which operations block /all/ threads.
+
+Using GHC without the @-threaded@ option, all foreign calls will block
+all other Haskell threads in the system, although I\/O operations will
+not.  With the @-threaded@ option, only foreign calls with the @unsafe@
+attribute will block all other threads.
+
+Using Hugs, all I\/O operations and foreign calls will block all other
+Haskell threads.
+-}
+
+-- | fork a thread and call the supplied function when the thread is about
+-- to terminate, with an exception or a returned value.  The function is
+-- called with asynchronous exceptions masked.
+--
+-- > forkFinally action and_then =
+-- >   mask $ \restore ->
+-- >     forkIO $ try (restore action) >>= and_then
+--
+-- This function is useful for informing the parent when a child
+-- terminates, for example.
+--
+forkFinally :: IO a -> (Either SomeException a -> IO ()) -> IO ThreadId
+forkFinally action and_then =
+  mask $ \restore ->
+    forkIO $ try (restore action) >>= and_then
+
+-- -----------------------------------------------------------------------------
+-- Merging streams
+
+#ifndef __HUGS__
+max_buff_size :: Int
+max_buff_size = 1
+
+{-# DEPRECATED mergeIO "Control.Concurrent.mergeIO will be removed in GHC 7.8. Please use an alternative, e.g. the SafeSemaphore package, instead." #-}
+{-# DEPRECATED nmergeIO "Control.Concurrent.nmergeIO will be removed in GHC 7.8. Please use an alternative, e.g. the SafeSemaphore package, instead." #-}
+mergeIO :: [a] -> [a] -> IO [a]
+nmergeIO :: [[a]] -> IO [a]
+
+-- $merge
+-- The 'mergeIO' and 'nmergeIO' functions fork one thread for each
+-- input list that concurrently evaluates that list; the results are
+-- merged into a single output list.  
+--
+-- Note: Hugs does not provide these functions, since they require
+-- preemptive multitasking.
+
+mergeIO ls rs
+ = newEmptyMVar                >>= \ tail_node ->
+   newMVar tail_node           >>= \ tail_list ->
+   newQSem max_buff_size       >>= \ e ->
+   newMVar 2                   >>= \ branches_running ->
+   let
+    buff = (tail_list,e)
+   in
+    forkIO (suckIO branches_running buff ls) >>
+    forkIO (suckIO branches_running buff rs) >>
+    takeMVar tail_node  >>= \ val ->
+    signalQSem e        >>
+    return val
+
+type Buffer a
+ = (MVar (MVar [a]), QSem)
+
+suckIO :: MVar Int -> Buffer a -> [a] -> IO ()
+
+suckIO branches_running buff@(tail_list,e) vs
+ = case vs of
+        [] -> takeMVar branches_running >>= \ val ->
+              if val == 1 then
+                 takeMVar tail_list     >>= \ node ->
+                 putMVar node []        >>
+                 putMVar tail_list node
+              else
+                 putMVar branches_running (val-1)
+        (x:xs) ->
+                waitQSem e                       >>
+                takeMVar tail_list               >>= \ node ->
+                newEmptyMVar                     >>= \ next_node ->
+                unsafeInterleaveIO (
+                        takeMVar next_node  >>= \ y ->
+                        signalQSem e        >>
+                        return y)                >>= \ next_node_val ->
+                putMVar node (x:next_node_val)   >>
+                putMVar tail_list next_node      >>
+                suckIO branches_running buff xs
+
+nmergeIO lss
+ = let
+    len = length lss
+   in
+    newEmptyMVar          >>= \ tail_node ->
+    newMVar tail_node     >>= \ tail_list ->
+    newQSem max_buff_size >>= \ e ->
+    newMVar len           >>= \ branches_running ->
+    let
+     buff = (tail_list,e)
+    in
+    mapIO (\ x -> forkIO (suckIO branches_running buff x)) lss >>
+    takeMVar tail_node  >>= \ val ->
+    signalQSem e        >>
+    return val
+  where
+    mapIO f xs = sequence (map f xs)
+#endif /* __HUGS__ */
+
+#ifdef __GLASGOW_HASKELL__
+-- ---------------------------------------------------------------------------
+-- Bound Threads
+
+{- $boundthreads
+   #boundthreads#
+
+Support for multiple operating system threads and bound threads as described
+below is currently only available in the GHC runtime system if you use the
+/-threaded/ option when linking.
+
+Other Haskell systems do not currently support multiple operating system threads.
+
+A bound thread is a haskell thread that is /bound/ to an operating system
+thread. While the bound thread is still scheduled by the Haskell run-time
+system, the operating system thread takes care of all the foreign calls made
+by the bound thread.
+
+To a foreign library, the bound thread will look exactly like an ordinary
+operating system thread created using OS functions like @pthread_create@
+or @CreateThread@.
+
+Bound threads can be created using the 'forkOS' function below. All foreign
+exported functions are run in a bound thread (bound to the OS thread that
+called the function). Also, the @main@ action of every Haskell program is
+run in a bound thread.
+
+Why do we need this? Because if a foreign library is called from a thread
+created using 'forkIO', it won't have access to any /thread-local state/ - 
+state variables that have specific values for each OS thread
+(see POSIX's @pthread_key_create@ or Win32's @TlsAlloc@). Therefore, some
+libraries (OpenGL, for example) will not work from a thread created using
+'forkIO'. They work fine in threads created using 'forkOS' or when called
+from @main@ or from a @foreign export@.
+
+In terms of performance, 'forkOS' (aka bound) threads are much more
+expensive than 'forkIO' (aka unbound) threads, because a 'forkOS'
+thread is tied to a particular OS thread, whereas a 'forkIO' thread
+can be run by any OS thread.  Context-switching between a 'forkOS'
+thread and a 'forkIO' thread is many times more expensive than between
+two 'forkIO' threads.
+
+Note in particular that the main program thread (the thread running
+@Main.main@) is always a bound thread, so for good concurrency
+performance you should ensure that the main thread is not doing
+repeated communication with other threads in the system.  Typically
+this means forking subthreads to do the work using 'forkIO', and
+waiting for the results in the main thread.
+
+-}
+
+-- | 'True' if bound threads are supported.
+-- If @rtsSupportsBoundThreads@ is 'False', 'isCurrentThreadBound'
+-- will always return 'False' and both 'forkOS' and 'runInBoundThread' will
+-- fail.
+foreign import ccall rtsSupportsBoundThreads :: Bool
+
+
+{- | 
+Like 'forkIO', this sparks off a new thread to run the 'IO'
+computation passed as the first argument, and returns the 'ThreadId'
+of the newly created thread.
+
+However, 'forkOS' creates a /bound/ thread, which is necessary if you
+need to call foreign (non-Haskell) libraries that make use of
+thread-local state, such as OpenGL (see "Control.Concurrent#boundthreads").
+
+Using 'forkOS' instead of 'forkIO' makes no difference at all to the
+scheduling behaviour of the Haskell runtime system.  It is a common
+misconception that you need to use 'forkOS' instead of 'forkIO' to
+avoid blocking all the Haskell threads when making a foreign call;
+this isn't the case.  To allow foreign calls to be made without
+blocking all the Haskell threads (with GHC), it is only necessary to
+use the @-threaded@ option when linking your program, and to make sure
+the foreign import is not marked @unsafe@.
+-}
+
+forkOS :: IO () -> IO ThreadId
+
+foreign export ccall forkOS_entry
+    :: StablePtr (IO ()) -> IO ()
+
+foreign import ccall "forkOS_entry" forkOS_entry_reimported
+    :: StablePtr (IO ()) -> IO ()
+
+forkOS_entry :: StablePtr (IO ()) -> IO ()
+forkOS_entry stableAction = do
+        action <- deRefStablePtr stableAction
+        action
+
+foreign import ccall forkOS_createThread
+    :: StablePtr (IO ()) -> IO CInt
+
+failNonThreaded :: IO a
+failNonThreaded = fail $ "RTS doesn't support multiple OS threads "
+                       ++"(use ghc -threaded when linking)"
+
+forkOS action0
+    | rtsSupportsBoundThreads = do
+        mv <- newEmptyMVar
+        b <- Exception.getMaskingState
+        let
+            -- async exceptions are masked in the child if they are masked
+            -- in the parent, as for forkIO (see #1048). forkOS_createThread
+            -- creates a thread with exceptions masked by default.
+            action1 = case b of
+                        Unmasked -> unsafeUnmask action0
+                        MaskedInterruptible -> action0
+                        MaskedUninterruptible -> uninterruptibleMask_ action0
+
+            action_plus = Exception.catch action1 childHandler
+
+        entry <- newStablePtr (myThreadId >>= putMVar mv >> action_plus)
+        err <- forkOS_createThread entry
+        when (err /= 0) $ fail "Cannot create OS thread."
+        tid <- takeMVar mv
+        freeStablePtr entry
+        return tid
+    | otherwise = failNonThreaded
+
+-- | Returns 'True' if the calling thread is /bound/, that is, if it is
+-- safe to use foreign libraries that rely on thread-local state from the
+-- calling thread.
+isCurrentThreadBound :: IO Bool
+isCurrentThreadBound = IO $ \ s# ->
+    case isCurrentThreadBound# s# of
+        (# s2#, flg #) -> (# s2#, not (flg ==# 0#) #)
+
+
+{- | 
+Run the 'IO' computation passed as the first argument. If the calling thread
+is not /bound/, a bound thread is created temporarily. @runInBoundThread@
+doesn't finish until the 'IO' computation finishes.
+
+You can wrap a series of foreign function calls that rely on thread-local state
+with @runInBoundThread@ so that you can use them without knowing whether the
+current thread is /bound/.
+-}
+runInBoundThread :: IO a -> IO a
+
+runInBoundThread action
+    | rtsSupportsBoundThreads = do
+        bound <- isCurrentThreadBound
+        if bound
+            then action
+            else do
+                ref <- newIORef undefined
+                let action_plus = Exception.try action >>= writeIORef ref
+                bracket (newStablePtr action_plus)
+                        freeStablePtr
+                        (\cEntry -> forkOS_entry_reimported cEntry >> readIORef ref) >>=
+                  unsafeResult
+    | otherwise = failNonThreaded
+
+{- | 
+Run the 'IO' computation passed as the first argument. If the calling thread
+is /bound/, an unbound thread is created temporarily using 'forkIO'.
+@runInBoundThread@ doesn't finish until the 'IO' computation finishes.
+
+Use this function /only/ in the rare case that you have actually observed a
+performance loss due to the use of bound threads. A program that
+doesn't need it's main thread to be bound and makes /heavy/ use of concurrency
+(e.g. a web server), might want to wrap it's @main@ action in
+@runInUnboundThread@.
+
+Note that exceptions which are thrown to the current thread are thrown in turn
+to the thread that is executing the given computation. This ensures there's
+always a way of killing the forked thread.
+-}
+runInUnboundThread :: IO a -> IO a
+
+runInUnboundThread action = do
+  bound <- isCurrentThreadBound
+  if bound
+    then do
+      mv <- newEmptyMVar
+      mask $ \restore -> do
+        tid <- forkIO $ Exception.try (restore action) >>= putMVar mv
+        let wait = takeMVar mv `Exception.catch` \(e :: SomeException) ->
+                     Exception.throwTo tid e >> wait
+        wait >>= unsafeResult
+    else action
+
+unsafeResult :: Either SomeException a -> IO a
+unsafeResult = either Exception.throwIO return
+#endif /* __GLASGOW_HASKELL__ */
+
+#ifdef __GLASGOW_HASKELL__
+-- ---------------------------------------------------------------------------
+-- threadWaitRead/threadWaitWrite
+
+-- | Block the current thread until data is available to read on the
+-- given file descriptor (GHC only).
+--
+-- This will throw an 'IOError' if the file descriptor was closed
+-- while this thread was blocked.  To safely close a file descriptor
+-- that has been used with 'threadWaitRead', use
+-- 'GHC.Conc.closeFdWith'.
+threadWaitRead :: Fd -> IO ()
+threadWaitRead fd
+#ifdef mingw32_HOST_OS
+  -- we have no IO manager implementing threadWaitRead on Windows.
+  -- fdReady does the right thing, but we have to call it in a
+  -- separate thread, otherwise threadWaitRead won't be interruptible,
+  -- and this only works with -threaded.
+  | threaded  = withThread (waitFd fd 0)
+  | otherwise = case fd of
+                  0 -> do _ <- hWaitForInput stdin (-1)
+                          return ()
+                        -- hWaitForInput does work properly, but we can only
+                        -- do this for stdin since we know its FD.
+                  _ -> error "threadWaitRead requires -threaded on Windows, or use System.IO.hWaitForInput"
+#else
+  = GHC.Conc.threadWaitRead fd
+#endif
+
+-- | Block the current thread until data can be written to the
+-- given file descriptor (GHC only).
+--
+-- This will throw an 'IOError' if the file descriptor was closed
+-- while this thread was blocked.  To safely close a file descriptor
+-- that has been used with 'threadWaitWrite', use
+-- 'GHC.Conc.closeFdWith'.
+threadWaitWrite :: Fd -> IO ()
+threadWaitWrite fd
+#ifdef mingw32_HOST_OS
+  | threaded  = withThread (waitFd fd 1)
+  | otherwise = error "threadWaitWrite requires -threaded on Windows"
+#else
+  = GHC.Conc.threadWaitWrite fd
+#endif
+
+#ifdef mingw32_HOST_OS
+foreign import ccall unsafe "rtsSupportsBoundThreads" threaded :: Bool
+
+withThread :: IO a -> IO a
+withThread io = do
+  m <- newEmptyMVar
+  _ <- mask_ $ forkIO $ try io >>= putMVar m
+  x <- takeMVar m
+  case x of
+    Right a -> return a
+    Left e  -> throwIO (e :: IOException)
+
+waitFd :: Fd -> CInt -> IO ()
+waitFd fd write = do
+   throwErrnoIfMinus1_ "fdReady" $
+        fdReady (fromIntegral fd) write iNFINITE 0
+
+iNFINITE :: CInt
+iNFINITE = 0xFFFFFFFF -- urgh
+
+foreign import ccall safe "fdReady"
+  fdReady :: CInt -> CInt -> CInt -> CInt -> IO CInt
+#endif
+
+-- ---------------------------------------------------------------------------
+-- More docs
+
+{- $osthreads
+
+      #osthreads# In GHC, threads created by 'forkIO' are lightweight threads, and
+      are managed entirely by the GHC runtime.  Typically Haskell
+      threads are an order of magnitude or two more efficient (in
+      terms of both time and space) than operating system threads.
+
+      The downside of having lightweight threads is that only one can
+      run at a time, so if one thread blocks in a foreign call, for
+      example, the other threads cannot continue.  The GHC runtime
+      works around this by making use of full OS threads where
+      necessary.  When the program is built with the @-threaded@
+      option (to link against the multithreaded version of the
+      runtime), a thread making a @safe@ foreign call will not block
+      the other threads in the system; another OS thread will take
+      over running Haskell threads until the original call returns.
+      The runtime maintains a pool of these /worker/ threads so that
+      multiple Haskell threads can be involved in external calls
+      simultaneously.
+
+      The "System.IO" library manages multiplexing in its own way.  On
+      Windows systems it uses @safe@ foreign calls to ensure that
+      threads doing I\/O operations don't block the whole runtime,
+      whereas on Unix systems all the currently blocked I\/O requests
+      are managed by a single thread (the /IO manager thread/) using
+      a mechanism such as @epoll@ or @kqueue@, depending on what is
+      provided by the host operating system.
+
+      The runtime will run a Haskell thread using any of the available
+      worker OS threads.  If you need control over which particular OS
+      thread is used to run a given Haskell thread, perhaps because
+      you need to call a foreign library that uses OS-thread-local
+      state, then you need bound threads (see "Control.Concurrent#boundthreads").
+
+      If you don't use the @-threaded@ option, then the runtime does
+      not make use of multiple OS threads.  Foreign calls will block
+      all other running Haskell threads until the call returns.  The
+      "System.IO" library still does multiplexing, so there can be multiple
+      threads doing I\/O, and this is handled internally by the runtime using
+      @select@.
+-}
+
+{- $termination
+
+      In a standalone GHC program, only the main thread is
+      required to terminate in order for the process to terminate.
+      Thus all other forked threads will simply terminate at the same
+      time as the main thread (the terminology for this kind of
+      behaviour is \"daemonic threads\").
+
+      If you want the program to wait for child threads to
+      finish before exiting, you need to program this yourself.  A
+      simple mechanism is to have each child thread write to an
+      'MVar' when it completes, and have the main
+      thread wait on all the 'MVar's before
+      exiting:
+
+>   myForkIO :: IO () -> IO (MVar ())
+>   myForkIO io = do
+>     mvar <- newEmptyMVar
+>     forkFinally io (\_ -> putMVar mvar ())
+>     return mvar
+
+      Note that we use 'forkFinally' to make sure that the
+      'MVar' is written to even if the thread dies or
+      is killed for some reason.
+
+      A better method is to keep a global list of all child
+      threads which we should wait for at the end of the program:
+
+>    children :: MVar [MVar ()]
+>    children = unsafePerformIO (newMVar [])
+>    
+>    waitForChildren :: IO ()
+>    waitForChildren = do
+>      cs <- takeMVar children
+>      case cs of
+>        []   -> return ()
+>        m:ms -> do
+>           putMVar children ms
+>           takeMVar m
+>           waitForChildren
+>
+>    forkChild :: IO () -> IO ThreadId
+>    forkChild io = do
+>        mvar <- newEmptyMVar
+>        childs <- takeMVar children
+>        putMVar children (mvar:childs)
+>        forkFinally io (\_ -> putMVar mvar ())
+>
+>     main =
+>       later waitForChildren $
+>       ...
+
+      The main thread principle also applies to calls to Haskell from
+      outside, using @foreign export@.  When the @foreign export@ed
+      function is invoked, it starts a new main thread, and it returns
+      when this main thread terminates.  If the call causes new
+      threads to be forked, they may remain in the system after the
+      @foreign export@ed function has returned.
+-}
+
+{- $preemption
+
+      GHC implements pre-emptive multitasking: the execution of
+      threads are interleaved in a random fashion.  More specifically,
+      a thread may be pre-empted whenever it allocates some memory,
+      which unfortunately means that tight loops which do no
+      allocation tend to lock out other threads (this only seems to
+      happen with pathological benchmark-style code, however).
+
+      The rescheduling timer runs on a 20ms granularity by
+      default, but this may be altered using the
+      @-i\<n\>@ RTS option.  After a rescheduling
+      \"tick\" the running thread is pre-empted as soon as
+      possible.
+
+      One final note: the
+      @aaaa@ @bbbb@ example may not
+      work too well on GHC (see Scheduling, above), due
+      to the locking on a 'System.IO.Handle'.  Only one thread
+      may hold the lock on a 'System.IO.Handle' at any one
+      time, so if a reschedule happens while a thread is holding the
+      lock, the other thread won't be able to run.  The upshot is that
+      the switch from @aaaa@ to
+      @bbbbb@ happens infrequently.  It can be
+      improved by lowering the reschedule tick period.  We also have a
+      patch that causes a reschedule whenever a thread waiting on a
+      lock is woken up, but haven't found it to be useful for anything
+      other than this example :-)
+-}
+#endif /* __GLASGOW_HASKELL__ */
+</code></pre></div>
+
+<div class="code"><pre class="language-haskell"><code>
+{-# LANGUAGE Safe #-}
+{-# LANGUAGE CPP #-}
+
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Text.Printf
+-- Copyright   :  (c) Lennart Augustsson, 2004-2008
+-- License     :  BSD-style (see the file libraries/base/LICENSE)
+-- 
+-- Maintainer  :  lennart@augustsson.net
+-- Stability   :  provisional
+-- Portability :  portable
+--
+-- A C printf like formatter.
+--
+-----------------------------------------------------------------------------
+
+{-# Language CPP #-}
+
+module Text.Printf(
+   printf, hPrintf,
+   PrintfType, HPrintfType, PrintfArg, IsChar
+) where
+
+import Prelude
+import Data.Char
+import Data.Int
+import Data.Word
+import Numeric(showEFloat, showFFloat, showGFloat)
+import System.IO
+
+-------------------
+
+-- | Format a variable number of arguments with the C-style formatting string.
+-- The return value is either 'String' or @('IO' a)@.
+--
+-- The format string consists of ordinary characters and /conversion
+-- specifications/, which specify how to format one of the arguments
+-- to printf in the output string.  A conversion specification begins with the
+-- character @%@, followed by one or more of the following flags:
+--
+-- >    -      left adjust (default is right adjust)
+-- >    +      always use a sign (+ or -) for signed conversions
+-- >    0      pad with zeroes rather than spaces
+--
+-- followed optionally by a field width:
+-- 
+-- >    num    field width
+-- >    *      as num, but taken from argument list
+--
+-- followed optionally by a precision:
+--
+-- >    .num   precision (number of decimal places)
+--
+-- and finally, a format character:
+--
+-- >    c      character               Char, Int, Integer, ...
+-- >    d      decimal                 Char, Int, Integer, ...
+-- >    o      octal                   Char, Int, Integer, ...
+-- >    x      hexadecimal             Char, Int, Integer, ...
+-- >    X      hexadecimal             Char, Int, Integer, ...
+-- >    u      unsigned decimal        Char, Int, Integer, ...
+-- >    f      floating point          Float, Double
+-- >    g      general format float    Float, Double
+-- >    G      general format float    Float, Double
+-- >    e      exponent format float   Float, Double
+-- >    E      exponent format float   Float, Double
+-- >    s      string                  String
+--
+-- Mismatch between the argument types and the format string will cause
+-- an exception to be thrown at runtime.
+--
+-- Examples:
+--
+-- >   > printf "%d\n" (23::Int)
+-- >   23
+-- >   > printf "%s %s\n" "Hello" "World"
+-- >   Hello World
+-- >   > printf "%.2f\n" pi
+-- >   3.14
+--
+printf :: (PrintfType r) => String -> r
+printf fmts = spr fmts []
+
+-- | Similar to 'printf', except that output is via the specified
+-- 'Handle'.  The return type is restricted to @('IO' a)@.
+hPrintf :: (HPrintfType r) => Handle -> String -> r
+hPrintf hdl fmts = hspr hdl fmts []
+
+-- |The 'PrintfType' class provides the variable argument magic for
+-- 'printf'.  Its implementation is intentionally not visible from
+-- this module. If you attempt to pass an argument of a type which
+-- is not an instance of this class to 'printf' or 'hPrintf', then
+-- the compiler will report it as a missing instance of 'PrintfArg'.
+class PrintfType t where
+    spr :: String -> [UPrintf] -> t
+
+-- | The 'HPrintfType' class provides the variable argument magic for
+-- 'hPrintf'.  Its implementation is intentionally not visible from
+-- this module.
+class HPrintfType t where
+    hspr :: Handle -> String -> [UPrintf] -> t
+
+{- not allowed in Haskell 98
+instance PrintfType String where
+    spr fmt args = uprintf fmt (reverse args)
+-}
+instance (IsChar c) => PrintfType [c] where
+    spr fmts args = map fromChar (uprintf fmts (reverse args))
+
+instance PrintfType (IO a) where
+    spr fmts args = do
+	putStr (uprintf fmts (reverse args))
+	return (error "PrintfType (IO a): result should not be used.")
+
+instance HPrintfType (IO a) where
+    hspr hdl fmts args = do
+	hPutStr hdl (uprintf fmts (reverse args))
+	return (error "HPrintfType (IO a): result should not be used.")
+
+instance (PrintfArg a, PrintfType r) => PrintfType (a -> r) where
+    spr fmts args = \ a -> spr fmts (toUPrintf a : args)
+
+instance (PrintfArg a, HPrintfType r) => HPrintfType (a -> r) where
+    hspr hdl fmts args = \ a -> hspr hdl fmts (toUPrintf a : args)
+
+class PrintfArg a where
+    toUPrintf :: a -> UPrintf
+
+instance PrintfArg Char where
+    toUPrintf c = UChar c
+
+{- not allowed in Haskell 98
+instance PrintfArg String where
+    toUPrintf s = UString s
+-}
+instance (IsChar c) => PrintfArg [c] where
+    toUPrintf = UString . map toChar
+
+instance PrintfArg Int where
+    toUPrintf = uInteger
+
+instance PrintfArg Int8 where
+    toUPrintf = uInteger
+
+instance PrintfArg Int16 where
+    toUPrintf = uInteger
+
+instance PrintfArg Int32 where
+    toUPrintf = uInteger
+
+instance PrintfArg Int64 where
+    toUPrintf = uInteger
+
+#ifndef __NHC__
+instance PrintfArg Word where
+    toUPrintf = uInteger
+#endif
+
+instance PrintfArg Word8 where
+    toUPrintf = uInteger
+
+instance PrintfArg Word16 where
+    toUPrintf = uInteger
+
+instance PrintfArg Word32 where
+    toUPrintf = uInteger
+
+instance PrintfArg Word64 where
+    toUPrintf = uInteger
+
+instance PrintfArg Integer where
+    toUPrintf = UInteger 0
+
+instance PrintfArg Float where
+    toUPrintf = UFloat
+
+instance PrintfArg Double where
+    toUPrintf = UDouble
+
+uInteger :: (Integral a, Bounded a) => a -> UPrintf
+uInteger x = UInteger (toInteger $ minBound `asTypeOf` x) (toInteger x)
+
+class IsChar c where
+    toChar :: c -> Char
+    fromChar :: Char -> c
+
+instance IsChar Char where
+    toChar c = c
+    fromChar c = c
+
+-------------------
+
+data UPrintf = UChar Char | UString String | UInteger Integer Integer | UFloat Float | UDouble Double
+
+uprintf :: String -> [UPrintf] -> String
+uprintf ""       []       = ""
+uprintf ""       (_:_)    = fmterr
+uprintf ('%':'%':cs) us   = '%':uprintf cs us
+uprintf ('%':_)  []       = argerr
+uprintf ('%':cs) us@(_:_) = fmt cs us
+uprintf (c:cs)   us       = c:uprintf cs us
+
+fmt :: String -> [UPrintf] -> String
+fmt cs us =
+	let (width, prec, ladj, zero, plus, cs', us') = getSpecs False False False cs us
+	    adjust (pre, str) = 
+		let lstr = length str
+		    lpre = length pre
+		    fill = if lstr+lpre < width then take (width-(lstr+lpre)) (repeat (if zero then '0' else ' ')) else ""
+		in  if ladj then pre ++ str ++ fill else if zero then pre ++ fill ++ str else fill ++ pre ++ str
+            adjust' ("", str) | plus = adjust ("+", str)
+            adjust' ps = adjust ps
+        in
+	case cs' of
+	[]     -> fmterr
+	c:cs'' ->
+	    case us' of
+	    []     -> argerr
+	    u:us'' ->
+		(case c of
+		'c' -> adjust  ("", [toEnum (toint u)])
+		'd' -> adjust' (fmti prec u)
+		'i' -> adjust' (fmti prec u)
+		'x' -> adjust  ("", fmtu 16 prec u)
+		'X' -> adjust  ("", map toUpper $ fmtu 16 prec u)
+		'o' -> adjust  ("", fmtu 8  prec u)
+		'u' -> adjust  ("", fmtu 10 prec u)
+		'e' -> adjust' (dfmt' c prec u)
+		'E' -> adjust' (dfmt' c prec u)
+		'f' -> adjust' (dfmt' c prec u)
+		'g' -> adjust' (dfmt' c prec u)
+		'G' -> adjust' (dfmt' c prec u)
+		's' -> adjust  ("", tostr prec u)
+		_   -> perror ("bad formatting char " ++ [c])
+		 ) ++ uprintf cs'' us''
+
+fmti :: Int -> UPrintf -> (String, String)
+fmti prec (UInteger _ i) = if i < 0 then ("-", integral_prec prec (show (-i))) else ("", integral_prec prec (show i))
+fmti _ (UChar c)         = fmti 0 (uInteger (fromEnum c))
+fmti _ _                 = baderr
+
+fmtu :: Integer -> Int -> UPrintf -> String
+fmtu b prec (UInteger l i) = integral_prec prec (itosb b (if i < 0 then -2*l + i else i))
+fmtu b _    (UChar c)      = itosb b (toInteger (fromEnum c))
+fmtu _ _ _                 = baderr
+
+integral_prec :: Int -> String -> String
+integral_prec prec integral = (replicate (prec - (length integral)) '0') ++ integral
+
+toint :: UPrintf -> Int
+toint (UInteger _ i) = fromInteger i
+toint (UChar c)      = fromEnum c
+toint _		     = baderr
+
+tostr :: Int -> UPrintf -> String
+tostr n (UString s) = if n >= 0 then take n s else s
+tostr _ _		  = baderr
+
+itosb :: Integer -> Integer -> String
+itosb b n = 
+	if n < b then 
+	    [intToDigit $ fromInteger n]
+	else
+	    let (q, r) = quotRem n b in
+	    itosb b q ++ [intToDigit $ fromInteger r]
+
+stoi :: Int -> String -> (Int, String)
+stoi a (c:cs) | isDigit c = stoi (a*10 + digitToInt c) cs
+stoi a cs                 = (a, cs)
+
+getSpecs :: Bool -> Bool -> Bool -> String -> [UPrintf] -> (Int, Int, Bool, Bool, Bool, String, [UPrintf])
+getSpecs _ z s ('-':cs) us = getSpecs True z s cs us
+getSpecs l z _ ('+':cs) us = getSpecs l z True cs us
+getSpecs l _ s ('0':cs) us = getSpecs l True s cs us
+getSpecs l z s ('*':cs) us =
+	let (us', n) = getStar us
+	    ((p, cs''), us'') =
+		    case cs of
+                    '.':'*':r -> let (us''', p') = getStar us'
+		    	      	 in  ((p', r), us''')
+		    '.':r     -> (stoi 0 r, us')
+		    _         -> ((-1, cs), us')
+	in  (n, p, l, z, s, cs'', us'')
+getSpecs l z s ('.':cs) us =
+	let ((p, cs'), us') = 
+	        case cs of
+		'*':cs'' -> let (us'', p') = getStar us in ((p', cs''), us'')
+                _ ->        (stoi 0 cs, us)
+	in  (0, p, l, z, s, cs', us')
+getSpecs l z s cs@(c:_) us | isDigit c =
+	let (n, cs') = stoi 0 cs
+	    ((p, cs''), us') = case cs' of
+	    	 	       '.':'*':r -> let (us'', p') = getStar us in ((p', r), us'')
+		               '.':r -> (stoi 0 r, us)
+			       _     -> ((-1, cs'), us)
+	in  (n, p, l, z, s, cs'', us')
+getSpecs l z s cs       us = (0, -1, l, z, s, cs, us)
+
+getStar :: [UPrintf] -> ([UPrintf], Int)
+getStar us =
+    case us of
+    [] -> argerr
+    nu : us' -> (us', toint nu)
+
+
+dfmt' :: Char -> Int -> UPrintf -> (String, String)
+dfmt' c p (UDouble d) = dfmt c p d
+dfmt' c p (UFloat f)  = dfmt c p f
+dfmt' _ _ _           = baderr
+
+dfmt :: (RealFloat a) => Char -> Int -> a -> (String, String)
+dfmt c p d =
+	case (if isUpper c then map toUpper else id) $
+             (case toLower c of
+                  'e' -> showEFloat
+                  'f' -> showFFloat
+                  'g' -> showGFloat
+                  _   -> error "Printf.dfmt: impossible"
+             )
+               (if p < 0 then Nothing else Just p) d "" of
+	'-':cs -> ("-", cs)
+	cs     -> ("" , cs)
+
+perror :: String -> a
+perror s = error ("Printf.printf: "++s)
+fmterr, argerr, baderr :: a
+fmterr = perror "formatting string ended prematurely"
+argerr = perror "argument list ended prematurely"
+baderr = perror "bad argument"
 </code></pre></div>
 
 </body>
